@@ -9,6 +9,7 @@ import {
   StyleSheet,
   FlatList,
   Dimensions,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -242,7 +243,7 @@ export default function DashboardScreen() {
           name: t.entity_label,
           region: REGION_LABELS[t.region_code] ?? t.region_code,
           score: t.trend_score,
-          delta: t.prev_score !== null ? t.trend_score - t.prev_score : Math.floor(Math.random() * 15 + 5),
+          delta: t.prev_score !== null ? t.trend_score - t.prev_score : null,
           emoji: getFoodEmoji(t.entity_label),
           snapshot: t,
         }))
@@ -261,11 +262,16 @@ export default function DashboardScreen() {
   // Build sparkline data from trends scores (up to 10 values)
   const sparkFromTrends = sorted.slice(0, 10).map((t) => t.trend_score);
 
+  // KPI derived values
+  const activeTrends = sorted.filter((t) => t.trend_score >= 45).length;
+  const hotTrends = sorted.filter((t) => t.trend_score >= 65).length;
+  const risingTrends = sorted.filter((t) => t.prev_score !== null && t.trend_score > t.prev_score).length;
+
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingScreen}>
         <View style={styles.loadingLogoWrap}>
-          <Text style={{ fontSize: 32 }}>🤖</Text>
+          <Image source={require("@/assets/chatbot.png")} style={{ width: 80, height: 80 }} />
         </View>
         <Text style={styles.loadingTitle}>Trendlify</Text>
         <Text style={styles.loadingSubtitle}>Kuliner AI untuk UMKM Indonesia</Text>
@@ -320,7 +326,7 @@ export default function DashboardScreen() {
             <Text style={styles.greetSub}>Pantau tren kuliner terkini untuk bisnis kamu</Text>
           </View>
           <View style={styles.robotCircle}>
-            <Text style={{ fontSize: 28 }}>🤖</Text>
+            <Image source={require("@/assets/chatbot.png")} style={{ width: 40, height: 40 }} />
           </View>
         </View>
 
@@ -359,7 +365,7 @@ export default function DashboardScreen() {
               <Ionicons name="arrow-forward" size={16} color={Colors.orange} />
             </View>
             <MiniSparkline
-              data={sparkFromTrends.length >= 2 ? sparkFromTrends : SPARKLINE_UP}
+              data={sparkFromTrends.length >= 2 ? sparkFromTrends : SPARKLINE_FLAT}
               color="rgba(255,255,255,0.8)"
               width={100}
               height={40}
@@ -370,10 +376,10 @@ export default function DashboardScreen() {
         {/* ── KPI: 2×2 grid ── */}
         <View style={styles.kpiGrid}>
           {[
-            { label: "Produk Trending", value: `${totalData || sorted.length}`, sub: `+${Math.max(1, Math.floor((totalData || 10) * 0.08))} baru hari ini`, subColor: Colors.emerald, icon: "bag-outline", iconBg: "#FFF7ED" },
-            { label: "Prediksi Akurat", value: "85%", sub: "+12% peningkatan", subColor: Colors.emerald, icon: "radio-button-on-outline", iconBg: "#FFF7ED" },
-            { label: "Peluang Promosi", value: "7", sub: "Siap digunakan", subColor: Colors.stone500, icon: "megaphone-outline", iconBg: "#FFF7ED" },
-            { label: "AI Insight Baru", value: `${Math.min(sorted.length, 5)}`, sub: "update hari ini", subColor: Colors.stone500, icon: "sparkles-outline", iconBg: "#FFF7ED" },
+            { label: "Produk Trending", value: `${sorted.length}`, sub: activeTrends > 0 ? `${activeTrends} aktif sekarang` : "Data tren", subColor: Colors.emerald, icon: "bag-outline", iconBg: "#FFF7ED" },
+            { label: "Rata-rata Skor", value: `${avgScore || "—"}`, sub: "dari 100 skor tren", subColor: avgScore >= 60 ? Colors.emerald : Colors.stone500, icon: "stats-chart-outline", iconBg: "#FFF7ED" },
+            { label: "Peluang Promosi", value: `${hotTrends}`, sub: hotTrends > 0 ? "Tren potensial" : "Pantau terus", subColor: hotTrends > 0 ? Colors.emerald : Colors.stone500, icon: "megaphone-outline", iconBg: "#FFF7ED" },
+            { label: "Tren Meningkat", value: `${risingTrends}`, sub: risingTrends > 0 ? "vs periode lalu" : "Pantau tren", subColor: risingTrends > 0 ? Colors.emerald : Colors.stone500, icon: "trending-up-outline", iconBg: "#FFF7ED" },
           ].map((item, i) => (
             <View key={i} style={styles.kpiSmallCard}>
               <View style={styles.kpiSmallTop}>
@@ -408,7 +414,9 @@ export default function DashboardScreen() {
           }}
           contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
           renderItem={({ item }) => {
-            const deltaAbs = Math.abs(item.delta);
+            const delta = item.delta;
+            const deltaAbs = delta !== null ? Math.abs(delta) : null;
+            const isUp = delta !== null && delta >= 0;
             return (
               <View style={styles.carouselCard}>
                 {/* Badge */}
@@ -420,15 +428,19 @@ export default function DashboardScreen() {
                 <View style={{ flexDirection: "row", alignItems: "flex-start", marginTop: 10 }}>
                   <View style={{ flex: 1, gap: 6 }}>
                     <Text style={styles.carouselTitle} numberOfLines={2}>
-                      {item.name} sedang meningkat di {item.region}
+                      {item.name} sedang {delta === null ? "trending" : isUp ? "meningkat" : "menurun"} di {item.region}
                     </Text>
                     <Text style={styles.carouselSub}>
-                      Skor tren naik {deltaAbs}% dalam 2 hari terakhir
+                      {deltaAbs !== null
+                        ? `Skor tren ${isUp ? "naik" : "turun"} ${deltaAbs} poin dalam 2 hari terakhir`
+                        : "Pantau perkembangan tren ini sekarang"}
                     </Text>
                     {/* Delta badge */}
-                    <View style={styles.deltaBadge}>
-                      <Text style={styles.deltaBadgeText}>+{deltaAbs}%</Text>
+                    {deltaAbs !== null && (
+                    <View style={[styles.deltaBadge, !isUp && { backgroundColor: Colors.red }]}>
+                      <Text style={styles.deltaBadgeText}>{isUp ? "+" : "-"}{deltaAbs}</Text>
                     </View>
+                    )}
                     {/* CTA */}
                     <TouchableOpacity
                       style={styles.carouselCTA}
@@ -559,7 +571,7 @@ export default function DashboardScreen() {
         {/* ── Chat Banner ── */}
         <View style={styles.chatBanner}>
           <View style={styles.chatBannerLeft}>
-            <Text style={{ fontSize: 28 }}>🤖</Text>
+            <Image source={require("@/assets/chatbot.png")} style={{ width: 40, height: 40 }} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={styles.chatBannerTitle}>Tanya Trendlify AI</Text>

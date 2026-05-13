@@ -2,15 +2,15 @@ import { useState, useRef, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   ActivityIndicator, StyleSheet, KeyboardAvoidingView,
-  Platform, Animated, Keyboard, ScrollView,
+  Platform, Animated, Keyboard, Image, Alert,
 } from "react-native";
+import Markdown from "react-native-markdown-display";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { Colors } from "@/constants/colors";
 import { API_URL } from "@/constants/api";
-import { LinearGradient } from "expo-linear-gradient";
 
 type Message = {
   id: string;
@@ -20,22 +20,20 @@ type Message = {
 };
 
 const QUICK_REPLIES = [
-  "🔥 Tren viral sekarang?",
-  "🍜 Menu rekomendasi warung",
-  "📈 Strategi promosi TikTok",
-  "💰 Kuliner paling cuan?",
-  "🗺️ Tren di daerahku?",
-  "🍗 Ide konten kuliner",
+  { label: "Margin keuntungan ideal", icon: "cash-outline" as const },
+  { label: "Cara daftar izin PIRT", icon: "document-text-outline" as const },
+  { label: "Tips promosi modal kecil", icon: "megaphone-outline" as const },
+  { label: "Hitung harga jual produk", icon: "calculator-outline" as const },
 ];
 
 const BOT_INTRO: Message = {
   id: "intro",
   role: "bot",
-  text: "Halo! Saya asisten AI Trendlify 👋\n\nTanya apa saja soal tren kuliner, strategi promosi, atau ide menu untuk usaha kamu. Saya siap bantu!",
+  text: "Halo! 👋\nAku **Trendly AI**, asisten bisnis kuliner kamu.\n\nTanya apa saja seputar:\n- Harga jual & margin keuntungan\n- Izin usaha & regulasi UMKM\n- Tips promosi & pemasaran\n- Strategi mengembangkan bisnis kuliner",
   ts: Date.now(),
 };
 
-function TypewriterText({ text, style, speed = 12 }: { text: string; style?: any; speed?: number }) {
+function TypewriterMarkdown({ text, speed = 8 }: { text: string; speed?: number }) {
   const [displayed, setDisplayed] = useState("");
   const indexRef = useRef(0);
 
@@ -50,7 +48,7 @@ function TypewriterText({ text, style, speed = 12 }: { text: string; style?: any
     return () => clearInterval(interval);
   }, [text]);
 
-  return <Text style={style}>{displayed}</Text>;
+  return <Markdown style={mdStyles}>{displayed}</Markdown>;
 }
 
 function TypingDots() {
@@ -63,7 +61,7 @@ function TypingDots() {
       return Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
-          Animated.timing(dot, { toValue: -6, duration: 280, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: -5, duration: 280, useNativeDriver: true }),
           Animated.timing(dot, { toValue: 0, duration: 280, useNativeDriver: true }),
           Animated.delay(600),
         ])
@@ -77,17 +75,20 @@ function TypingDots() {
   }, []);
 
   return (
-    <View style={styles.typingBubble}>
-      {[dot1, dot2, dot3].map((dot, i) => (
-        <Animated.View key={i} style={[styles.typingDot, { transform: [{ translateY: dot }] }]} />
-      ))}
+    <View style={styles.msgRowBot}>
+      <Image source={require("@/assets/chatbot.png")} style={styles.botAvatar} />
+      <View style={styles.typingBubble}>
+        {[dot1, dot2, dot3].map((dot, i) => (
+          <Animated.View key={i} style={[styles.typingDot, { transform: [{ translateY: dot }] }]} />
+        ))}
+      </View>
     </View>
   );
 }
 
-function MessageBubble({ msg, isLast, isNew = false }: { msg: Message; isLast: boolean; isNew?: boolean }) {
+function MessageBubble({ msg, isNew = false }: { msg: Message; isNew?: boolean }) {
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(12)).current;
+  const translateY = useRef(new Animated.Value(10)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -105,49 +106,23 @@ function MessageBubble({ msg, isLast, isNew = false }: { msg: Message; isLast: b
       { opacity, transform: [{ translateY }] },
     ]}>
       {!isUser && (
-        <View style={styles.botAvatar}>
-          <Ionicons name="sparkles" size={13} color={Colors.white} />
-        </View>
+        <Image source={require("@/assets/chatbot.png")} style={styles.botAvatar} />
       )}
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
-        {isNew && !isUser ? (
-          <TypewriterText
-            text={msg.text}
-            style={[styles.bubbleText, styles.bubbleTextBot]}
-            speed={10}
-          />
+        {isUser ? (
+          <Text style={[styles.bubbleText, styles.bubbleTextUser]}>{msg.text}</Text>
+        ) : isNew ? (
+          <TypewriterMarkdown text={msg.text} speed={8} />
         ) : (
-          <Text style={[styles.bubbleText, isUser ? styles.bubbleTextUser : styles.bubbleTextBot]}>
-            {msg.text}
-          </Text>
+          <Markdown style={mdStyles}>{msg.text}</Markdown>
         )}
       </View>
     </Animated.View>
   );
 }
 
-function PulsingAvatar() {
-  const pulse = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.2, duration: 600, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 600, useNativeDriver: true }),
-      ])
-    ).start();
-    return () => pulse.stopAnimation();
-  }, []);
-
-  return (
-    <Animated.View style={[styles.botAvatar, { transform: [{ scale: pulse }] }]}>
-      <Ionicons name="sparkles" size={13} color={Colors.white} />
-    </Animated.View>
-  );
-}
-
 export default function ChatScreen() {
-  const { token, isLoggedIn } = useAuth();
+  const { token, isLoggedIn, user } = useAuth();
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([BOT_INTRO]);
   const [input, setInput] = useState("");
@@ -159,101 +134,106 @@ export default function ChatScreen() {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
   }
 
-  async function send(text: string) {
+  function endSession() {
+    Alert.alert(
+      "Akhiri Sesi",
+      "Percakapan ini akan dihapus dan sesi baru akan dimulai. Lanjutkan?",
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Akhiri Sesi",
+          style: "destructive",
+          onPress: () => {
+            setMessages([{ ...BOT_INTRO, ts: Date.now() }]);
+            setNewestBotId("intro");
+            setInput("");
+          },
+        },
+      ]
+    );
+  }
+
+  async function send(text: string, currentMessages: Message[] = messages) {
     if (!text.trim() || loading) return;
     Keyboard.dismiss();
 
     const userMsg: Message = { id: Date.now().toString(), role: "user", text: text.trim(), ts: Date.now() };
-    setMessages((p) => [...p, userMsg]);
+    const updatedMessages = [...currentMessages, userMsg];
+    setMessages(updatedMessages);
     setInput("");
     setLoading(true);
     scrollToBottom();
 
+    // Build history from all messages except the intro
+    const history = currentMessages
+      .filter((m) => m.id !== "intro")
+      .map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: m.text }));
+
     try {
-      const res = await fetch(`${API_URL}/api/v1/insights/generate`, {
+      const res = await fetch(`${API_URL}/api/v1/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          trending_product: text.trim(),
-          trend_score: null,
-          region_code: "ID",
-        }),
+        body: JSON.stringify({ message: text.trim(), history }),
       });
 
       const json = await res.json();
 
       if (res.status === 401) {
-        const errMsg: Message = {
-          id: (Date.now() + 1).toString(), role: "bot",
-          text: "Sesi kamu sudah habis. Silakan logout lalu login ulang untuk melanjutkan.",
-          ts: Date.now(),
-        };
-        setMessages((p) => [...p, errMsg]);
-        setNewestBotId(errMsg.id);
+        const m: Message = { id: (Date.now() + 1).toString(), role: "bot", text: "Sesi kamu sudah habis. Silakan logout lalu login ulang.", ts: Date.now() };
+        setMessages((p) => [...p, m]);
+        setNewestBotId(m.id);
         return;
       }
-
       if (!res.ok) {
-        const errMsg: Message = {
-          id: (Date.now() + 1).toString(), role: "bot",
-          text: `Gagal mendapatkan respons dari server (${res.status}). Coba lagi.`,
-          ts: Date.now(),
-        };
-        setMessages((p) => [...p, errMsg]);
-        setNewestBotId(errMsg.id);
+        const m: Message = { id: (Date.now() + 1).toString(), role: "bot", text: `Gagal mendapatkan respons (${res.status}). Coba lagi.`, ts: Date.now() };
+        setMessages((p) => [...p, m]);
+        setNewestBotId(m.id);
         return;
       }
 
-      const raw: string = json.insight?.summary ?? json.summary ?? "Maaf, saya tidak bisa memproses pertanyaan itu. Coba tanya hal lain!";
-      const clean = raw.replace(/^## .+$/gm, (h) => `\n${h.replace(/^## /, "").toUpperCase()}`).trim();
-
-      const botMsg: Message = { id: (Date.now() + 1).toString(), role: "bot", text: clean, ts: Date.now() };
-      setMessages((p) => [...p, botMsg]);
-      setNewestBotId(botMsg.id);
+      const raw: string = json.reply ?? "Maaf, saya tidak bisa memproses itu. Coba tanya hal lain!";
+      const m: Message = { id: (Date.now() + 1).toString(), role: "bot", text: raw.trim(), ts: Date.now() };
+      setMessages((p) => [...p, m]);
+      setNewestBotId(m.id);
     } catch {
-      const errMsg: Message = {
-        id: (Date.now() + 1).toString(), role: "bot",
-        text: "Koneksi ke server gagal. Pastikan backend sudah berjalan dan coba lagi.",
-        ts: Date.now(),
-      };
-      setMessages((p) => [...p, errMsg]);
-      setNewestBotId(errMsg.id);
+      const m: Message = { id: (Date.now() + 1).toString(), role: "bot", text: "Koneksi ke server gagal. Pastikan jaringan kamu aktif.", ts: Date.now() };
+      setMessages((p) => [...p, m]);
+      setNewestBotId(m.id);
     } finally {
       setLoading(false);
       scrollToBottom();
     }
   }
 
-  const showQuickReplies = !loading && !input.trim();
+  const showQuickReplies = messages.length <= 1 && !loading;
+
+  // Header shared between gate and main view
+  const Header = () => (
+    <View style={styles.header}>
+      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <Ionicons name="arrow-back" size={20} color={Colors.stone700} />
+      </TouchableOpacity>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.headerTitle}>Trendly Chatbot</Text>
+        <View style={styles.onlineRow}>
+          <View style={styles.onlineDot} />
+          <Text style={styles.onlineText}>{loading ? "Mengetik…" : "Online"}</Text>
+        </View>
+      </View>
+      <Image source={require("@/assets/chatbot.png")} style={styles.headerRobot} />
+    </View>
+  );
 
   if (!isLoggedIn) {
     return (
-      <SafeAreaView style={styles.container}>
-        <LinearGradient
-          colors={["#FB923C", "#F97316", "#EA580C"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.header}
-        >
-          <View style={styles.headerAvatarWrap}>
-            <Text style={{ fontSize: 20 }}>🤖</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Trendly AI</Text>
-            <View style={styles.onlineRow}>
-              <View style={styles.onlineDot} />
-              <Text style={styles.onlineText}>Online</Text>
-            </View>
-          </View>
-        </LinearGradient>
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <Header />
         <View style={styles.gateWrap}>
-          <View style={styles.gateIconWrap}>
-            <Ionicons name="chatbubbles" size={32} color={Colors.orange} />
-          </View>
+          <Image source={require("@/assets/chatbot.png")} style={{ width: 90, height: 90, marginBottom: 8 }} />
           <Text style={styles.gateTitle}>Login untuk Chat dengan AI</Text>
           <Text style={styles.gateSub}>Tanya strategi kuliner, tren pasar, dan ide promosi langsung ke AI Trendlify</Text>
           <TouchableOpacity style={styles.gateBtn} onPress={() => router.push("/login")}>
@@ -266,31 +246,8 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={["#FB923C", "#F97316", "#EA580C"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View style={styles.headerAvatarWrap}>
-          <Text style={{ fontSize: 20 }}>🤖</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Trendly AI</Text>
-          <View style={styles.onlineRow}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>{loading ? "Mengetik…" : "Online"}</Text>
-          </View>
-        </View>
-        <TouchableOpacity
-          style={styles.clearBtn}
-          onPress={() => setMessages([BOT_INTRO])}
-        >
-          <Ionicons name="trash-outline" size={15} color="rgba(255,255,255,0.8)" />
-        </TouchableOpacity>
-      </LinearGradient>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <Header />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -305,36 +262,35 @@ export default function ChatScreen() {
           contentContainerStyle={styles.messageList}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={scrollToBottom}
-          renderItem={({ item, index }) => (
-            <MessageBubble msg={item} isLast={index === messages.length - 1} isNew={item.id === newestBotId} />
+          renderItem={({ item }) => (
+            <MessageBubble msg={item} isNew={item.id === newestBotId} />
           )}
-          ListFooterComponent={loading ? (
-            <View style={styles.msgRowBot}>
-              <PulsingAvatar />
-              <TypingDots />
-            </View>
-          ) : null}
+          ListFooterComponent={loading ? <TypingDots /> : null}
         />
 
-        {/* Quick replies — always-visible horizontal scroll */}
+        {/* Quick replies — 2-column grid */}
         {showQuickReplies && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.quickRow}
-            style={styles.quickWrap}
-          >
+          <View style={styles.quickGrid}>
             {QUICK_REPLIES.map((q) => (
               <TouchableOpacity
-                key={q}
+                key={q.label}
                 style={styles.quickChip}
-                onPress={() => send(q)}
+                onPress={() => send(q.label)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.quickChipText} numberOfLines={1}>{q}</Text>
+                <Ionicons name={q.icon} size={14} color={Colors.orange} />
+                <Text style={styles.quickChipText}>{q.label}</Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
+        )}
+
+        {/* Akhiri Sesi bar — only show when conversation has started */}
+        {messages.length > 1 && (
+          <TouchableOpacity style={styles.endSessionBar} onPress={endSession} activeOpacity={0.8}>
+            <Ionicons name="stop-circle-outline" size={15} color={Colors.red} />
+            <Text style={styles.endSessionText}>Akhiri Sesi dengan Trendly</Text>
+          </TouchableOpacity>
         )}
 
         {/* Input bar */}
@@ -343,7 +299,7 @@ export default function ChatScreen() {
             style={styles.input}
             value={input}
             onChangeText={setInput}
-            placeholder="Tanya soal tren kuliner…"
+            placeholder="Ketik pesan..."
             placeholderTextColor={Colors.stone400}
             multiline
             maxLength={500}
@@ -358,7 +314,7 @@ export default function ChatScreen() {
           >
             {loading
               ? <ActivityIndicator size="small" color={Colors.white} />
-              : <Ionicons name="send" size={16} color={Colors.white} />
+              : <Ionicons name="send" size={15} color={Colors.white} />
             }
           </TouchableOpacity>
         </View>
@@ -367,73 +323,94 @@ export default function ChatScreen() {
   );
 }
 
+const mdStyles = {
+  body: { color: Colors.stone800, fontSize: 14, lineHeight: 22 },
+  heading1: { fontSize: 15, fontWeight: "800" as const, color: Colors.stone900, marginTop: 10, marginBottom: 4 },
+  heading2: { fontSize: 14, fontWeight: "800" as const, color: Colors.orange, marginTop: 8, marginBottom: 3, textTransform: "uppercase" as const, letterSpacing: 0.4 },
+  heading3: { fontSize: 13, fontWeight: "700" as const, color: Colors.stone700, marginTop: 6, marginBottom: 2 },
+  strong: { fontWeight: "700" as const, color: Colors.stone900 },
+  em: { fontStyle: "italic" as const, color: Colors.stone600 },
+  bullet_list: { marginTop: 4, marginBottom: 4 },
+  ordered_list: { marginTop: 4, marginBottom: 4 },
+  list_item: { marginVertical: 2 },
+  bullet_list_icon: { color: Colors.orange, marginTop: 5 },
+  paragraph: { marginTop: 2, marginBottom: 2 },
+  hr: { backgroundColor: Colors.stone200, marginVertical: 8, height: 1 },
+  code_inline: { backgroundColor: Colors.stone100, color: Colors.orange, borderRadius: 4, paddingHorizontal: 4, fontSize: 12 },
+  fence: { backgroundColor: Colors.stone100, borderRadius: 8, padding: 10, marginVertical: 6 },
+  code_block: { backgroundColor: Colors.stone100, borderRadius: 8, padding: 10, fontSize: 12, color: Colors.stone800 },
+};
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF9F5" },
 
+  // Header — white
   header: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: Colors.orange, paddingHorizontal: 20, paddingVertical: 14,
-    shadowColor: Colors.orangeDark, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 6,
+    backgroundColor: Colors.white, paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: Colors.stone100,
   },
-  headerAvatarWrap: {
-    width: 38, height: 38, borderRadius: 99,
-    backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center",
-    borderWidth: 2, borderColor: "rgba(255,255,255,0.35)",
+  backBtn: {
+    width: 36, height: 36, borderRadius: 12,
+    backgroundColor: Colors.stone50, alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: Colors.stone200,
   },
-  headerTitle: { fontSize: 15, fontWeight: "800", color: Colors.white },
+  headerTitle: { fontSize: 15, fontWeight: "800", color: Colors.stone900 },
   onlineRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
   onlineDot: { width: 7, height: 7, borderRadius: 99, backgroundColor: "#4ADE80" },
-  onlineText: { fontSize: 10, color: "rgba(255,255,255,0.85)", fontWeight: "600" },
-  clearBtn: {
-    width: 34, height: 34, borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center",
-  },
+  onlineText: { fontSize: 10, color: Colors.stone500, fontWeight: "600" },
+  headerRobot: { width: 44, height: 44 },
 
-  messageList: { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10, gap: 10 },
+  messageList: { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10, gap: 12 },
 
-  msgRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, maxWidth: "90%" },
+  msgRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, maxWidth: "88%" },
   msgRowUser: { alignSelf: "flex-end", flexDirection: "row-reverse" },
   msgRowBot: { alignSelf: "flex-start" },
 
-  botAvatar: {
-    width: 30, height: 30, borderRadius: 99, backgroundColor: Colors.orange,
-    alignItems: "center", justifyContent: "center", flexShrink: 0,
-  },
+  botAvatar: { width: 32, height: 32, borderRadius: 16, flexShrink: 0 },
 
   bubble: {
     borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10, maxWidth: "100%",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  bubbleUser: {
-    backgroundColor: Colors.orange, borderBottomRightRadius: 5,
-  },
+  bubbleUser: { backgroundColor: Colors.orange, borderBottomRightRadius: 4 },
   bubbleBot: {
-    backgroundColor: Colors.white, borderBottomLeftRadius: 5,
+    backgroundColor: Colors.white, borderBottomLeftRadius: 4,
     borderWidth: 1, borderColor: Colors.stone100,
   },
   bubbleText: { fontSize: 14, lineHeight: 22 },
   bubbleTextUser: { color: Colors.white, fontWeight: "500" },
   bubbleTextBot: { color: Colors.stone800 },
 
-  // Typing dots
   typingBubble: {
     flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: Colors.white, borderRadius: 18, borderBottomLeftRadius: 5,
+    backgroundColor: Colors.white, borderRadius: 18, borderBottomLeftRadius: 4,
     paddingHorizontal: 16, paddingVertical: 14,
     borderWidth: 1, borderColor: Colors.stone100,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
   },
   typingDot: { width: 7, height: 7, borderRadius: 99, backgroundColor: Colors.stone300 },
 
-  // Quick replies — compact horizontal scroll
-  quickWrap: { paddingBottom: 6 },
-  quickLabel: { fontSize: 10, fontWeight: "700", color: Colors.stone400, textTransform: "uppercase", letterSpacing: 0.5 },
-  quickRow: { flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingVertical: 6 },
-  quickChip: {
-    backgroundColor: Colors.white, borderRadius: 20, borderWidth: 1.5, borderColor: Colors.orangeLight,
-    paddingHorizontal: 14, paddingVertical: 8, flexShrink: 0,
+  // Quick replies — 2-column grid
+  quickGrid: {
+    flexDirection: "row", flexWrap: "wrap", gap: 10,
+    paddingHorizontal: 14, paddingBottom: 10,
   },
-  quickChipText: { fontSize: 12, fontWeight: "600", color: Colors.orange },
+  quickChip: {
+    flexDirection: "row", alignItems: "center", gap: 7,
+    backgroundColor: Colors.white, borderRadius: 20,
+    borderWidth: 1.5, borderColor: Colors.orangeLight,
+    paddingHorizontal: 14, paddingVertical: 10,
+    width: "47%",
+  },
+  quickChipText: { fontSize: 12, fontWeight: "600", color: Colors.stone700, flexShrink: 1 },
+
+  // End session bar
+  endSessionBar: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    paddingVertical: 8, backgroundColor: "#FEF2F2",
+    borderTopWidth: 1, borderTopColor: "#FECACA",
+  },
+  endSessionText: { fontSize: 12, fontWeight: "700", color: Colors.red },
 
   // Input
   inputBar: {
@@ -455,10 +432,6 @@ const styles = StyleSheet.create({
 
   // Gate
   gateWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 },
-  gateIconWrap: {
-    width: 72, height: 72, borderRadius: 24, backgroundColor: Colors.orangeBg,
-    alignItems: "center", justifyContent: "center", marginBottom: 4,
-  },
   gateTitle: { fontSize: 17, fontWeight: "800", color: Colors.stone800, textAlign: "center" },
   gateSub: { fontSize: 13, color: Colors.stone500, textAlign: "center", lineHeight: 20 },
   gateBtn: {

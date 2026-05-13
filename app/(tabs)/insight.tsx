@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, StyleSheet, Alert, Animated,
 } from "react-native";
+import Markdown from "react-native-markdown-display";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -125,7 +126,7 @@ function CopyableSectionCard({
 
       {isOpen && (
         <View style={[styles.sectionBody, { borderTopColor: Colors.stone100, borderTopWidth: 1 }]}>
-          <Text style={styles.sectionContent}>{section.content.trim()}</Text>
+          <Markdown style={insightMdStyles}>{section.content.trim()}</Markdown>
           <TouchableOpacity style={styles.copyBtn} onPress={handleCopy}>
             <Ionicons
               name={copied ? "checkmark-circle" : "copy-outline"}
@@ -397,6 +398,21 @@ export default function InsightScreen() {
   );
 }
 
+const insightMdStyles = {
+  body: { color: Colors.stone700, fontSize: 13, lineHeight: 22 },
+  heading2: { fontSize: 13, fontWeight: "800" as const, color: Colors.orange, marginTop: 8, marginBottom: 3, textTransform: "uppercase" as const, letterSpacing: 0.3 },
+  heading3: { fontSize: 13, fontWeight: "700" as const, color: Colors.stone800, marginTop: 6, marginBottom: 2 },
+  strong: { fontWeight: "700" as const, color: Colors.stone900 },
+  em: { fontStyle: "italic" as const, color: Colors.stone500 },
+  bullet_list: { marginTop: 2, marginBottom: 2 },
+  ordered_list: { marginTop: 2, marginBottom: 2 },
+  list_item: { marginVertical: 1 },
+  bullet_list_icon: { color: Colors.orange, marginTop: 5 },
+  paragraph: { marginTop: 1, marginBottom: 1 },
+  hr: { backgroundColor: Colors.stone200, marginVertical: 6, height: 1 },
+  code_inline: { backgroundColor: Colors.stone100, color: Colors.orange, borderRadius: 4, paddingHorizontal: 4, fontSize: 12 },
+};
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.orangeBg },
 
@@ -521,7 +537,6 @@ const styles = StyleSheet.create({
   },
   copyReadyText: { fontSize: 8, fontWeight: "800", color: Colors.orange, textTransform: "uppercase", letterSpacing: 0.3 },
   sectionBody: { paddingHorizontal: 14, paddingVertical: 12, gap: 10 },
-  sectionContent: { fontSize: 13, color: Colors.stone700, lineHeight: 22 },
   copyBtn: {
     flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start",
     backgroundColor: Colors.stone50, borderRadius: 8, borderWidth: 1, borderColor: Colors.stone200,

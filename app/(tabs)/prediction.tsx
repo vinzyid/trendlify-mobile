@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, ScrollView,
-  ActivityIndicator, StyleSheet, Alert, Dimensions,
+  ActivityIndicator, StyleSheet, Alert, Dimensions, Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -283,7 +283,7 @@ export default function PredictionScreen() {
           </View>
           <Text style={styles.headerSub}>Proyeksi pertumbuhan tren kuliner</Text>
         </View>
-        <Text style={{ fontSize: 36 }}>🤖</Text>
+        <Image source={require("@/assets/chatbot.png")} style={{ width: 52, height: 52 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
