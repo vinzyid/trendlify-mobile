@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, StyleSheet, Alert, Animated,
+  ActivityIndicator, StyleSheet, Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,59 +10,55 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Colors } from "@/constants/colors";
 import { API_URL } from "@/constants/api";
 
-function getScoreMeta(score?: number) {
-  if (!score) return { label: "—", color: Colors.stone400, bg: Colors.stone100 };
-  if (score >= 86) return { label: "VIRAL 🔥", color: "#DC2626", bg: "#FEF2F2" };
-  if (score >= 71) return { label: "HOT 🌟", color: Colors.orange, bg: "#FFF7ED" };
-  if (score >= 51) return { label: "AKTIF ✅", color: Colors.emerald, bg: "#F0FDF4" };
-  if (score >= 31) return { label: "BERKEMBANG 📈", color: "#3B82F6", bg: "#EFF6FF" };
-  return { label: "NICHE 🔍", color: Colors.stone500, bg: Colors.stone100 };
+// Matches web exactly
+const LOADING_STEPS = [
+  "Memindai tren pasar kuliner real-time…",
+  "Analisis kompetitor & posisi pasar…",
+  "AI menyusun strategi untuk kamu…",
+];
+
+type ScoreMeta = {
+  label: string; verdict: string; icon: string;
+  badgeColor: string; badgeBg: string;
+  potential: string; action: string;
+};
+
+function getScoreMeta(score?: number): ScoreMeta {
+  if (!score) return { label: "—", verdict: "Masukkan keyword", icon: "📊", badgeColor: Colors.stone500, badgeBg: Colors.stone100, potential: "—", action: "—" };
+  if (score >= 86) return { label: "VIRAL",      verdict: "Masuk sekarang!",      icon: "🔥", badgeColor: "#DC2626", badgeBg: "#FEF2F2", potential: "Sangat Tinggi",  action: "Mulai Hari Ini"     };
+  if (score >= 71) return { label: "HOT",        verdict: "Momentum memuncak",     icon: "🌟", badgeColor: Colors.orange, badgeBg: "#FFF7ED", potential: "Tinggi",        action: "Push Sekarang"      };
+  if (score >= 51) return { label: "AKTIF",      verdict: "Pasar siap digarap",    icon: "✅", badgeColor: Colors.emerald, badgeBg: "#F0FDF4", potential: "Sedang–Tinggi", action: "Mulai Minggu Ini"   };
+  if (score >= 31) return { label: "BERKEMBANG", verdict: "Early mover advantage", icon: "📈", badgeColor: "#3B82F6", badgeBg: "#EFF6FF", potential: "Berkembang",     action: "Persiapkan Dulu"    };
+  return              { label: "NICHE",      verdict: "Spesialisasi unik",     icon: "🔍", badgeColor: Colors.stone500, badgeBg: Colors.stone100, potential: "Niche", action: "Riset Lebih Lanjut" };
 }
 
-function LoadingSteps({ step }: { step: number }) {
-  const steps = [
-    { icon: "search-outline" as const, label: "Menganalisa data tren…" },
-    { icon: "bulb-outline" as const, label: "Meracik strategi kuliner…" },
-    { icon: "document-text-outline" as const, label: "Menyusun laporan AI…" },
-  ];
-  return (
-    <View style={loadStyles.wrap}>
-      {steps.map((s, i) => {
-        const isDone = i < step;
-        const isActive = i === step;
-        return (
-          <View key={i} style={loadStyles.step}>
-            <View style={[loadStyles.iconWrap, isDone && loadStyles.iconDone, isActive && loadStyles.iconActive]}>
-              {isDone
-                ? <Ionicons name="checkmark" size={14} color={Colors.white} />
-                : isActive
-                  ? <ActivityIndicator size="small" color={Colors.white} />
-                  : <Ionicons name={s.icon} size={14} color={Colors.stone400} />
-              }
-            </View>
-            <Text style={[loadStyles.label, isDone && loadStyles.labelDone, isActive && loadStyles.labelActive]}>
-              {s.label}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
-  );
+type Section = { heading: string; content: string };
+
+function parseSections(text: string): Section[] {
+  const lines = text.split("\n");
+  const sections: Section[] = [];
+  let current: Section | null = null;
+  for (const line of lines) {
+    if (line.startsWith("## ")) {
+      if (current) sections.push(current);
+      current = { heading: line.replace(/^## /, "").trim(), content: "" };
+    } else if (current) {
+      current.content += line + "\n";
+    }
+  }
+  if (current) sections.push(current);
+  // If no ## sections found, treat entire text as one section
+  if (sections.length === 0 && text.trim()) {
+    sections.push({ heading: "Rekomendasi AI", content: text });
+  }
+  return sections;
 }
 
-const loadStyles = StyleSheet.create({
-  wrap: { gap: 10 },
-  step: { flexDirection: "row", alignItems: "center", gap: 12 },
-  iconWrap: {
-    width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.stone100,
-    alignItems: "center", justifyContent: "center",
-  },
-  iconDone: { backgroundColor: Colors.emerald },
-  iconActive: { backgroundColor: Colors.orange },
-  label: { fontSize: 13, color: Colors.stone400 },
-  labelDone: { color: Colors.stone500 },
-  labelActive: { fontSize: 13, fontWeight: "700", color: Colors.stone800 },
-});
+const PROVIDER_LABEL: Record<string, string> = {
+  gemini: "Gemini AI",
+  groq: "Groq AI",
+  stub: "Demo Mode",
+};
 
 export default function InsightScreen() {
   const { token, isLoggedIn } = useAuth();
@@ -74,6 +70,7 @@ export default function InsightScreen() {
   const [loadStep, setLoadStep] = useState(0);
   const [result, setResult] = useState<string | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
+  const [openSections, setOpenSections] = useState<Set<number>>(new Set([0]));
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const score = params.score ? parseInt(params.score) : undefined;
@@ -100,6 +97,7 @@ export default function InsightScreen() {
     if (!keyword.trim() || !token) return;
     setLoading(true);
     setResult(null);
+    setOpenSections(new Set([0]));
     startLoadAnimation();
     try {
       const res = await fetch(`${API_URL}/api/v1/insights/generate`, {
@@ -119,6 +117,7 @@ export default function InsightScreen() {
       if (!res.ok) { Alert.alert("Error", json.message ?? "Gagal generate."); return; }
       setResult(json.insight?.summary ?? json.summary ?? null);
       setProvider(json.insight?.provider ?? json.provider ?? null);
+      setOpenSections(new Set([0, 1]));
     } catch {
       Alert.alert("Error", "Tidak dapat terhubung ke server.");
     } finally {
@@ -127,119 +126,204 @@ export default function InsightScreen() {
     }
   }
 
-  const providerLabel = provider === "groq" ? "Groq AI" : provider === "gemini" ? "Gemini AI" : provider === "stub" ? "Demo" : provider ?? "";
+  function toggleSection(i: number) {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i); else next.add(i);
+      return next;
+    });
+  }
+
+  const sections = result ? parseSections(result) : [];
+  const providerLabel = provider ? (PROVIDER_LABEL[provider] ?? provider) : null;
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* Header — gradient from-orange-50 to-amber-50 on web, orange on mobile */}
       <View style={styles.header}>
         <View style={styles.headerIconBox}>
           <Ionicons name="sparkles" size={17} color={Colors.white} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>AI Konsultan Kuliner</Text>
-          <Text style={styles.headerSub}>Strategi & promosi berbasis AI</Text>
+          <Text style={styles.headerSub}>Strategi promosi & target pasar berbasis AI</Text>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {!isLoggedIn ? (
+          /* Gate — matches web: two buttons side by side */
           <View style={styles.gateCard}>
             <View style={styles.gateLockIcon}>
-              <Ionicons name="lock-closed" size={28} color={Colors.orange} />
+              <Ionicons name="sparkles" size={24} color={Colors.orange} />
             </View>
-            <Text style={styles.gateTitle}>Login untuk konsultasi AI</Text>
-            <Text style={styles.gateSub}>Dapatkan strategi kuliner, estimasi cuan, dan konten promosi siap pakai</Text>
-            <TouchableOpacity style={styles.gateBtn} onPress={() => router.push("/login")}>
-              <Ionicons name="log-in-outline" size={16} color={Colors.white} />
-              <Text style={styles.gateBtnText}>Masuk Sekarang</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/register")}>
-              <Text style={styles.gateRegisterLink}>Belum punya akun? <Text style={{ color: Colors.orange, fontWeight: "700" }}>Daftar gratis</Text></Text>
-            </TouchableOpacity>
+            <Text style={styles.gateTitle}>Konsultasi Gratis dengan AI</Text>
+            <Text style={styles.gateSub}>
+              Login untuk mendapatkan strategi kuliner & promosi AI secara real-time.
+            </Text>
+            <View style={styles.gateBtnRow}>
+              <TouchableOpacity style={styles.gateBtnOutline} onPress={() => router.push("/login")}>
+                <Ionicons name="log-in-outline" size={14} color={Colors.orange} />
+                <Text style={styles.gateBtnOutlineText}>Masuk</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.gateBtnFill} onPress={() => router.push("/register")}>
+                <Ionicons name="person-add-outline" size={14} color={Colors.white} />
+                <Text style={styles.gateBtnFillText}>Daftar Gratis</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
           <>
-            {/* Keyword chip (from dashboard tap) */}
-            {params.keyword && (
-              <View style={styles.fromDashboardBanner}>
-                <Ionicons name="arrow-down-circle-outline" size={16} color={Colors.orange} />
-                <Text style={styles.fromDashboardText}>Dari Dashboard: <Text style={{ fontWeight: "700", color: Colors.stone800 }}>{params.keyword}</Text></Text>
-              </View>
-            )}
-
-            {/* Input */}
-            <View style={styles.inputCard}>
-              <Text style={styles.inputLabel}>Keyword Kuliner</Text>
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={styles.input}
-                  value={keyword}
-                  onChangeText={setKeyword}
-                  placeholder="Ketik keyword, cth: mie gacoan…"
-                  placeholderTextColor={Colors.stone400}
-                  returnKeyType="done"
-                  onSubmitEditing={generate}
-                />
-                <TouchableOpacity
-                  style={[styles.sendBtn, (!keyword.trim() || loading) && styles.sendBtnDisabled]}
-                  onPress={generate}
-                  disabled={!keyword.trim() || loading}
-                >
-                  {loading
-                    ? <ActivityIndicator size="small" color={Colors.white} />
-                    : <Ionicons name="sparkles" size={17} color={Colors.white} />
-                  }
-                </TouchableOpacity>
-              </View>
-
-              {/* Score badge */}
-              {score !== undefined && (
-                <View style={styles.scoreBadgeRow}>
-                  <View style={[styles.scoreBadge, { backgroundColor: scoreMeta.bg, borderColor: scoreMeta.color + "30" }]}>
-                    <Text style={[styles.scoreBadgeLabel, { color: scoreMeta.color }]}>{scoreMeta.label}</Text>
-                  </View>
-                  <Text style={styles.scoreNumText}>Skor <Text style={{ color: Colors.orange, fontWeight: "800" }}>{score}</Text>/100</Text>
-                </View>
-              )}
+            {/* Input — matches web */}
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.input}
+                value={keyword}
+                onChangeText={(v) => setKeyword(v)}
+                placeholder="Ketik keyword atau pilih dari tabel…"
+                placeholderTextColor={Colors.stone400}
+                returnKeyType="done"
+                onSubmitEditing={generate}
+              />
+              <TouchableOpacity
+                style={[styles.generateBtn, (!keyword.trim() || loading) && styles.generateBtnDisabled]}
+                onPress={generate}
+                disabled={!keyword.trim() || loading}
+              >
+                {loading
+                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  : <Ionicons name="send" size={15} color={Colors.white} />
+                }
+                <Text style={styles.generateBtnText}>{loading ? "Analisis…" : "Generate"}</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Loading */}
+            {/* Score summary — 3 cards matching web exactly */}
+            {score !== undefined && !loading && (
+              <View style={styles.scoreGrid}>
+                {/* Status Tren */}
+                <View style={styles.scoreCard}>
+                  <View style={styles.scoreCardHeader}>
+                    <Ionicons name="trending-up-outline" size={10} color={Colors.stone400} />
+                    <Text style={styles.scoreCardLabel}>Status Tren</Text>
+                  </View>
+                  <View style={[styles.scoreBadgePill, { backgroundColor: scoreMeta.badgeBg }]}>
+                    <Text style={[styles.scoreBadgePillText, { color: scoreMeta.badgeColor }]}>
+                      {scoreMeta.icon} {scoreMeta.label}
+                    </Text>
+                  </View>
+                  <Text style={styles.scoreCardVerdict}>{scoreMeta.verdict}</Text>
+                </View>
+
+                {/* Potensi Cuan */}
+                <View style={styles.scoreCard}>
+                  <View style={styles.scoreCardHeader}>
+                    <Ionicons name="cash-outline" size={10} color={Colors.stone400} />
+                    <Text style={styles.scoreCardLabel}>Potensi Cuan</Text>
+                  </View>
+                  <Text style={styles.scoreCardValue}>{scoreMeta.potential}</Text>
+                  <Text style={styles.scoreCardVerdict}>skor {score}/100</Text>
+                </View>
+
+                {/* Rekomendasi */}
+                <View style={styles.scoreCard}>
+                  <View style={styles.scoreCardHeader}>
+                    <Ionicons name="flash-outline" size={10} color={Colors.stone400} />
+                    <Text style={styles.scoreCardLabel}>Rekomendasi</Text>
+                  </View>
+                  <Text style={[styles.scoreCardValue, { color: Colors.orange }]}>{scoreMeta.action}</Text>
+                  <Text style={styles.scoreCardVerdict}>data Trendlify</Text>
+                </View>
+              </View>
+            )}
+
+            {!result && !loading && score === undefined && (
+              <Text style={styles.hintText}>
+                Masukkan nama produk kuliner atau klik baris di tabel Dashboard untuk analisis instan.
+              </Text>
+            )}
+
+            {/* Loading steps — matches web exactly */}
             {loading && (
               <View style={styles.loadingCard}>
-                <View style={styles.loadingCardHeader}>
-                  <ActivityIndicator color={Colors.orange} />
-                  <Text style={styles.loadingTitle}>AI sedang bekerja…</Text>
-                </View>
-                <LoadingSteps step={loadStep} />
+                <Text style={styles.loadingCardTitle}>AI sedang bekerja…</Text>
+                {LOADING_STEPS.map((step, i) => {
+                  const isDone = i < loadStep;
+                  const isActive = i === loadStep;
+                  return (
+                    <View key={i} style={[styles.loadStep, (!isDone && !isActive) && styles.loadStepDim]}>
+                      <View style={[styles.loadStepIcon, isDone && styles.loadStepDone, isActive && styles.loadStepActive]}>
+                        {isDone
+                          ? <Ionicons name="checkmark" size={11} color={Colors.white} />
+                          : isActive
+                            ? <ActivityIndicator size="small" color={Colors.white} />
+                            : null
+                        }
+                      </View>
+                      <Text style={[styles.loadStepText, (isDone || isActive) && styles.loadStepTextActive]}>
+                        {step}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
             )}
 
-            {/* Result */}
-            {result && !loading && (
-              <View style={styles.resultCard}>
-                <View style={styles.resultHeader}>
-                  <View style={styles.resultTitleRow}>
-                    <Ionicons name="sparkles" size={15} color={Colors.orange} />
-                    <Text style={styles.resultTitle}>Rekomendasi AI</Text>
-                  </View>
-                  {providerLabel !== "" && (
+            {/* Result — collapsible sections matching web */}
+            {result && sections.length > 0 && !loading && (
+              <View style={styles.resultWrap}>
+                {/* Provider badge */}
+                {providerLabel && (
+                  <View style={styles.providerRow}>
                     <View style={styles.providerBadge}>
+                      <Ionicons name="sparkles" size={11} color={Colors.orange} />
                       <Text style={styles.providerText}>{providerLabel}</Text>
                     </View>
-                  )}
-                </View>
-                <View style={styles.resultDivider} />
-                <Text style={styles.resultText}>{result}</Text>
-              </View>
-            )}
+                    <Text style={styles.providerFor}>
+                      Analisis untuk: <Text style={{ fontWeight: "700", color: Colors.stone600 }}>{keyword}</Text>
+                    </Text>
+                  </View>
+                )}
 
-            {!result && !loading && (
-              <View style={styles.hintCard}>
-                <Ionicons name="information-circle-outline" size={20} color={Colors.stone300} />
-                <Text style={styles.hintText}>
-                  Ketik keyword kuliner atau pilih dari tab Dashboard, lalu tekan tombol ✨.
-                </Text>
+                {sections.map((section, i) => {
+                  const isOpen = openSections.has(i);
+                  const isPriority = /caption|tiktok|script|konten siap/i.test(section.heading);
+
+                  return (
+                    <View
+                      key={i}
+                      style={[styles.sectionCard, isPriority && styles.sectionCardPriority]}
+                    >
+                      {/* Section header */}
+                      <TouchableOpacity
+                        style={styles.sectionToggle}
+                        onPress={() => toggleSection(i)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.sectionHeading} numberOfLines={2}>{section.heading}</Text>
+                        <View style={styles.sectionToggleRight}>
+                          {isPriority && (
+                            <View style={styles.copyReadyBadge}>
+                              <Text style={styles.copyReadyText}>Siap Copy</Text>
+                            </View>
+                          )}
+                          <Ionicons
+                            name={isOpen ? "chevron-up" : "chevron-down"}
+                            size={15}
+                            color={Colors.stone400}
+                          />
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* Section body */}
+                      {isOpen && (
+                        <View style={[styles.sectionBody, { borderTopColor: Colors.stone100, borderTopWidth: 1 }]}>
+                          <Text style={styles.sectionContent}>{section.content.trim()}</Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
               </View>
             )}
           </>
@@ -267,96 +351,111 @@ const styles = StyleSheet.create({
 
   scroll: { padding: 16, gap: 14, paddingBottom: 28 },
 
-  // Gate (not logged in)
+  // Gate — two buttons side by side (matches web)
   gateCard: {
-    backgroundColor: Colors.white, borderRadius: 20, padding: 28,
+    backgroundColor: Colors.white, borderRadius: 20, padding: 28, marginTop: 16,
     alignItems: "center", gap: 12,
     borderWidth: 1, borderColor: Colors.stone200,
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
-    marginTop: 16,
   },
   gateLockIcon: {
-    width: 64, height: 64, borderRadius: 20, backgroundColor: Colors.orangeBg,
+    width: 56, height: 56, borderRadius: 18, backgroundColor: Colors.orangeBg,
     alignItems: "center", justifyContent: "center", marginBottom: 4,
   },
-  gateTitle: { fontSize: 17, fontWeight: "800", color: Colors.stone800, textAlign: "center" },
-  gateSub: { fontSize: 13, color: Colors.stone500, textAlign: "center", lineHeight: 20 },
-  gateBtn: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: Colors.orange, borderRadius: 14,
-    paddingHorizontal: 24, paddingVertical: 13, marginTop: 4,
-    shadowColor: Colors.orange, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+  gateTitle: { fontSize: 16, fontWeight: "700", color: Colors.stone800, textAlign: "center" },
+  gateSub: { fontSize: 13, color: Colors.stone500, textAlign: "center", lineHeight: 20, maxWidth: 260 },
+  gateBtnRow: { flexDirection: "row", gap: 12, marginTop: 4 },
+  gateBtnOutline: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    borderWidth: 2, borderColor: "#FED7AA", borderRadius: 12,
+    paddingVertical: 11, backgroundColor: Colors.white,
   },
-  gateBtnText: { color: Colors.white, fontWeight: "800", fontSize: 14 },
-  gateRegisterLink: { fontSize: 13, color: Colors.stone400 },
+  gateBtnOutlineText: { fontSize: 13, fontWeight: "700", color: Colors.orange },
+  gateBtnFill: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    backgroundColor: Colors.orange, borderRadius: 12, paddingVertical: 11,
+    shadowColor: Colors.orange, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 4,
+  },
+  gateBtnFillText: { fontSize: 13, fontWeight: "800", color: Colors.white },
 
-  // From dashboard banner
-  fromDashboardBanner: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "#FFF7ED", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
-    borderWidth: 1, borderColor: "#FED7AA",
-  },
-  fromDashboardText: { fontSize: 12, color: Colors.stone600, flex: 1 },
-
-  // Input card
-  inputCard: {
-    backgroundColor: Colors.white, borderRadius: 18, padding: 16, gap: 12,
-    borderWidth: 1, borderColor: Colors.stone200,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
-  },
-  inputLabel: { fontSize: 11, fontWeight: "700", color: Colors.stone600, textTransform: "uppercase", letterSpacing: 0.4 },
-  inputRow: { flexDirection: "row", gap: 10 },
+  // Input — matches web rounded-xl border-2 border-stone-200 bg-stone-50
+  inputRow: { flexDirection: "row", gap: 8 },
   input: {
-    flex: 1, backgroundColor: Colors.stone50, borderRadius: 13, borderWidth: 1.5,
-    borderColor: Colors.stone200, paddingHorizontal: 14, paddingVertical: 12,
+    flex: 1, backgroundColor: Colors.stone50, borderRadius: 12, borderWidth: 2,
+    borderColor: Colors.stone200, paddingHorizontal: 14, paddingVertical: 11,
     fontSize: 14, color: Colors.stone800,
   },
-  sendBtn: {
-    width: 50, height: 50, borderRadius: 13, backgroundColor: Colors.orange,
-    alignItems: "center", justifyContent: "center",
-    shadowColor: Colors.orange, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
+  generateBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: Colors.orange, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 11,
+    shadowColor: Colors.orange, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 3,
   },
-  sendBtnDisabled: { opacity: 0.45, shadowOpacity: 0 },
-  scoreBadgeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  scoreBadge: { borderRadius: 99, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 5 },
-  scoreBadgeLabel: { fontSize: 11, fontWeight: "800" },
-  scoreNumText: { fontSize: 12, color: Colors.stone500 },
+  generateBtnDisabled: { opacity: 0.4, shadowOpacity: 0 },
+  generateBtnText: { fontSize: 13, fontWeight: "800", color: Colors.white },
 
-  // Loading
+  // Score summary — 3 cards matching web
+  scoreGrid: { flexDirection: "row", gap: 8 },
+  scoreCard: {
+    flex: 1, backgroundColor: Colors.white, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.stone100,
+    padding: 10, gap: 4,
+  },
+  scoreCardHeader: { flexDirection: "row", alignItems: "center", gap: 3, marginBottom: 2 },
+  scoreCardLabel: { fontSize: 8, fontWeight: "600", color: Colors.stone400, textTransform: "uppercase", letterSpacing: 0.3 },
+  scoreBadgePill: { borderRadius: 99, paddingHorizontal: 6, paddingVertical: 2, alignSelf: "flex-start" },
+  scoreBadgePillText: { fontSize: 9, fontWeight: "800" },
+  scoreCardValue: { fontSize: 12, fontWeight: "800", color: Colors.stone800 },
+  scoreCardVerdict: { fontSize: 9, color: Colors.stone500, lineHeight: 13 },
+
+  hintText: { fontSize: 12, color: Colors.stone400, lineHeight: 18 },
+
+  // Loading — matches web orange-50 bg with steps
   loadingCard: {
-    backgroundColor: Colors.white, borderRadius: 18, padding: 18, gap: 16,
+    backgroundColor: "#FFF7ED", borderRadius: 16, padding: 18, gap: 12,
     borderWidth: 1, borderColor: "#FED7AA",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
   },
-  loadingCardHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
-  loadingTitle: { fontSize: 14, fontWeight: "700", color: Colors.stone800 },
+  loadingCardTitle: { fontSize: 10, fontWeight: "800", color: Colors.orange, textTransform: "uppercase", letterSpacing: 1 },
+  loadStep: { flexDirection: "row", alignItems: "center", gap: 10 },
+  loadStepDim: { opacity: 0.3 },
+  loadStepIcon: {
+    width: 20, height: 20, borderRadius: 99,
+    borderWidth: 2, borderColor: Colors.stone200,
+    alignItems: "center", justifyContent: "center",
+  },
+  loadStepDone: { backgroundColor: Colors.emerald, borderColor: Colors.emerald },
+  loadStepActive: { backgroundColor: Colors.orange, borderColor: Colors.orange },
+  loadStepText: { flex: 1, fontSize: 13, color: Colors.stone400 },
+  loadStepTextActive: { color: Colors.stone700, fontWeight: "500" },
 
-  // Result
-  resultCard: {
-    backgroundColor: Colors.white, borderRadius: 18, overflow: "hidden",
-    borderWidth: 1, borderColor: Colors.stone200,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
-  },
-  resultHeader: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 16, paddingVertical: 13,
-    backgroundColor: Colors.orangeBg,
-  },
-  resultTitleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  resultTitle: { fontSize: 13, fontWeight: "800", color: Colors.stone800 },
+  // Result sections — collapsible like web
+  resultWrap: { gap: 8 },
+  providerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
   providerBadge: {
-    backgroundColor: Colors.white, borderRadius: 99, borderWidth: 1, borderColor: "#FED7AA",
-    paddingHorizontal: 10, paddingVertical: 3,
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "#F0FDF4", borderRadius: 99,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: "#BBF7D0",
   },
-  providerText: { fontSize: 10, fontWeight: "700", color: Colors.orange },
-  resultDivider: { height: 1, backgroundColor: Colors.stone100 },
-  resultText: { fontSize: 13, color: Colors.stone700, lineHeight: 23, padding: 16 },
+  providerText: { fontSize: 11, fontWeight: "600", color: Colors.emerald },
+  providerFor: { fontSize: 11, color: Colors.stone400 },
 
-  // Hint
-  hintCard: {
-    backgroundColor: Colors.white, borderRadius: 16, padding: 18,
-    flexDirection: "row", alignItems: "flex-start", gap: 12,
+  sectionCard: {
+    backgroundColor: Colors.white, borderRadius: 12, overflow: "hidden",
     borderWidth: 1, borderColor: Colors.stone200,
   },
-  hintText: { flex: 1, fontSize: 13, color: Colors.stone400, lineHeight: 21 },
+  sectionCardPriority: { borderColor: "#FDBA74", backgroundColor: "#FFFBF5" },
+  sectionToggle: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  sectionHeading: { flex: 1, fontSize: 13, fontWeight: "700", color: Colors.stone800, lineHeight: 18 },
+  sectionToggleRight: { flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 8 },
+  copyReadyBadge: {
+    backgroundColor: "#FFF7ED", borderRadius: 99,
+    paddingHorizontal: 7, paddingVertical: 2,
+  },
+  copyReadyText: { fontSize: 8, fontWeight: "800", color: Colors.orange, textTransform: "uppercase", letterSpacing: 0.3 },
+  sectionBody: { paddingHorizontal: 14, paddingVertical: 12 },
+  sectionContent: { fontSize: 13, color: Colors.stone700, lineHeight: 22 },
 });

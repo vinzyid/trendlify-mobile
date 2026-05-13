@@ -96,7 +96,6 @@ export default function DashboardScreen() {
         <Text style={styles.loadingTitle}>Trendlify</Text>
         <Text style={styles.loadingSubtitle}>Kuliner AI untuk UMKM Indonesia</Text>
         <ActivityIndicator size="large" color={Colors.orange} style={{ marginTop: 24 }} />
-        <Text style={styles.loadingHint}>Memuat tren kuliner…</Text>
       </SafeAreaView>
     );
   }
@@ -130,108 +129,93 @@ export default function DashboardScreen() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => { setRefreshing(true); fetchData(); }}
-            tintColor={Colors.orange}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} tintColor={Colors.orange} />
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero card */}
-        {overview?.hero?.trending_product && (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            style={styles.heroCard}
-            onPress={() => goToInsight({
-              id: overview.hero.id ?? 0,
-              entity_label: overview.hero.trending_product!,
-              trend_score: overview.hero.trend_score ?? 0,
-              prev_score: null,
-              region_code: overview.hero.region_code ?? "ID",
-            })}
-          >
-            <View style={styles.heroCircle1} />
-            <View style={styles.heroCircle2} />
-            <View style={styles.heroTop}>
-              <View style={styles.heroFireBadge}>
-                <Text style={styles.heroFireText}>🔥 TRENDING #1</Text>
-              </View>
-              <View style={styles.heroScorePill}>
-                <Text style={styles.heroScoreText}>{overview.hero.trend_score}<Text style={styles.heroScoreUnit}>/100</Text></Text>
-              </View>
-            </View>
-            <Text style={styles.heroProduct} numberOfLines={2}>{overview.hero.trending_product}</Text>
-            <View style={styles.heroFooter}>
-              <View style={styles.heroLocation}>
-                <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.85)" />
-                <Text style={styles.heroLocationText}>
-                  {REGION_LABELS[overview.hero.region_code ?? ""] ?? overview.hero.region_code ?? "Indonesia"}
-                </Text>
-              </View>
-              <View style={styles.heroAnalyzeBtn}>
-                <Text style={styles.heroAnalyzeBtnText}>Analisa AI</Text>
-                <Ionicons name="arrow-forward" size={11} color={Colors.orange} />
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
+        {/* Page title — matches web "Dashboard Kuliner" */}
+        <View style={styles.pageTitle}>
+          <Text style={styles.pageTitleText}>Dashboard Kuliner</Text>
+          <Text style={styles.pageTitleSub}>Pantau tren makanan & minuman UMKM Indonesia</Text>
+        </View>
 
-        {/* Stats row */}
+        {/* KPI Cards — matches web: 4 cards, first is accent */}
         {overview && (
-          <View style={styles.statsRow}>
-            <View style={[styles.statCard, styles.statCardFirst]}>
-              <Ionicons name="trophy-outline" size={16} color={Colors.orange} style={styles.statIcon} />
-              <Text style={styles.statLabel}>Skor Tertinggi</Text>
-              <Text style={styles.statValue}>
-                {overview.hero.trend_score ?? "—"}
-                <Text style={styles.statUnit}>/100</Text>
+          <View style={styles.kpiGrid}>
+            {/* Accent card — Kuliner #1 Trending */}
+            <View style={[styles.kpiCard, styles.kpiCardAccent]}>
+              <View style={[styles.kpiIconWrap, styles.kpiIconAccent]}>
+                <Ionicons name="star" size={16} color={Colors.orange} />
+              </View>
+              <Text style={styles.kpiLabel}>Kuliner #1 Trending</Text>
+              <Text style={[styles.kpiValue, styles.kpiValueAccent]} numberOfLines={1}>
+                {overview.hero.trending_product ?? "—"}
               </Text>
+              {overview.hero.region_code && (
+                <Text style={styles.kpiSub}>{REGION_LABELS[overview.hero.region_code] ?? overview.hero.region_code}</Text>
+              )}
             </View>
-            <View style={styles.statCard}>
-              <Ionicons name="analytics-outline" size={16} color="#3B82F6" style={styles.statIcon} />
-              <Text style={styles.statLabel}>Rata-rata</Text>
-              <Text style={[styles.statValue, { color: "#3B82F6" }]}>
-                {overview.stats.avg_score ?? "—"}
-                <Text style={styles.statUnit}>/100</Text>
-              </Text>
+
+            {/* Skor Tertinggi */}
+            <View style={styles.kpiCard}>
+              <View style={styles.kpiIconWrap}>
+                <Ionicons name="trending-up" size={16} color={Colors.stone400} />
+              </View>
+              <Text style={styles.kpiLabel}>Skor Tertinggi</Text>
+              <Text style={styles.kpiValue}>{overview.hero.trend_score != null ? `${overview.hero.trend_score} / 100` : "—"}</Text>
             </View>
-            <View style={styles.statCard}>
-              <Ionicons name="grid-outline" size={16} color={Colors.emerald} style={styles.statIcon} />
-              <Text style={styles.statLabel}>Data Kuliner</Text>
-              <Text style={[styles.statValue, { color: Colors.emerald }]}>
-                {overview.stats.samples?.toLocaleString("id-ID") ?? "—"}
-              </Text>
+
+            {/* Rata-rata */}
+            <View style={styles.kpiCard}>
+              <View style={styles.kpiIconWrap}>
+                <Ionicons name="bar-chart" size={16} color={Colors.stone400} />
+              </View>
+              <Text style={styles.kpiLabel}>Rata-rata Tren</Text>
+              <Text style={styles.kpiValue}>{overview.stats.avg_score != null ? `${overview.stats.avg_score} / 100` : "—"}</Text>
+            </View>
+
+            {/* Data Kuliner */}
+            <View style={styles.kpiCard}>
+              <View style={styles.kpiIconWrap}>
+                <Ionicons name="server-outline" size={16} color={Colors.stone400} />
+              </View>
+              <Text style={styles.kpiLabel}>Data Kuliner</Text>
+              <Text style={styles.kpiValue}>{overview.stats.samples?.toLocaleString("id-ID") ?? "—"}</Text>
             </View>
           </View>
         )}
 
-        {/* Trends table */}
+        {/* Trends table — matches web layout */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.cardIconWrap}>
-              <Ionicons name="bar-chart" size={15} color={Colors.orange} />
+              <Ionicons name="trending-up" size={15} color={Colors.orange} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Top Keyword Kuliner</Text>
-              <Text style={styles.cardSub}>Tap keyword untuk konsultasi AI</Text>
+              <Text style={styles.cardTitle}>Top 10 Keyword Kuliner</Text>
+              <Text style={styles.cardSub}>Tren score tertinggi saat ini</Text>
             </View>
-            <Text style={styles.cardCount}>{sorted.length} tren</Text>
+            <TouchableOpacity
+              style={styles.refreshBtn}
+              onPress={() => { setRefreshing(true); fetchData(); }}
+            >
+              <Ionicons name="refresh-outline" size={13} color={Colors.stone500} />
+              <Text style={styles.refreshText}>Refresh</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Table header */}
+          {/* Table header — matches web bg-stone-50 */}
           <View style={styles.tableHead}>
             <Text style={[styles.tableHeadCell, { width: 36 }]}>#</Text>
-            <Text style={[styles.tableHeadCell, { flex: 1 }]}>Keyword</Text>
-            <Text style={[styles.tableHeadCell, { width: 108 }]}>Skor & Delta</Text>
-            <Text style={[styles.tableHeadCell, { width: 46, textAlign: "right" }]}>Area</Text>
+            <Text style={[styles.tableHeadCell, { flex: 1 }]}>Keyword Kuliner</Text>
+            <Text style={[styles.tableHeadCell, { width: 108 }]}>Skor & Perubahan</Text>
+            <Text style={[styles.tableHeadCell, { width: 46, textAlign: "right" }]}>Wilayah</Text>
           </View>
 
           {sorted.map((t, i) => {
             const rank = i + 1;
             const rankMeta = getRankMeta(rank);
             const delta = t.prev_score !== null ? t.trend_score - t.prev_score : null;
-            const isViral = t.trend_score >= 80;
 
             return (
               <TouchableOpacity
@@ -240,7 +224,6 @@ export default function DashboardScreen() {
                 onPress={() => goToInsight(t)}
                 activeOpacity={0.65}
               >
-                {/* Rank badge */}
                 <View style={[styles.rankBadge, { backgroundColor: rankMeta.bg }]}>
                   {rankMeta.label
                     ? <Text style={styles.rankEmoji}>{rankMeta.label}</Text>
@@ -248,20 +231,11 @@ export default function DashboardScreen() {
                   }
                 </View>
 
-                {/* Label */}
-                <View style={styles.trendInfo}>
-                  <Text style={styles.trendLabel} numberOfLines={1}>{t.entity_label}</Text>
-                  {isViral && (
-                    <View style={styles.viralPill}>
-                      <Text style={styles.viralText}>🔥 Viral</Text>
-                    </View>
-                  )}
-                </View>
+                <Text style={styles.trendLabel} numberOfLines={1}>{t.entity_label}</Text>
 
-                {/* Score */}
                 <View style={styles.scoreCol}>
-                  <ScoreBar score={t.trend_score} />
-                  <View style={styles.scoreRow}>
+                  <View style={styles.scoreInner}>
+                    <ScoreBar score={t.trend_score} />
                     <Text style={styles.scoreNum}>{t.trend_score}</Text>
                     {delta !== null && delta !== 0 && (
                       <Text style={[styles.deltaText, { color: delta > 0 ? Colors.emerald : Colors.red }]}>
@@ -271,7 +245,6 @@ export default function DashboardScreen() {
                   </View>
                 </View>
 
-                {/* Region */}
                 <Text style={styles.regionText} numberOfLines={1}>
                   {REGION_LABELS[t.region_code] ?? t.region_code}
                 </Text>
@@ -287,7 +260,6 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.orangeBg },
 
-  // Loading
   loadingScreen: { flex: 1, alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: Colors.orangeBg },
   loadingLogoWrap: {
     width: 68, height: 68, borderRadius: 22, backgroundColor: Colors.orange,
@@ -296,15 +268,12 @@ const styles = StyleSheet.create({
   },
   loadingTitle: { fontSize: 26, fontWeight: "900", color: Colors.stone900 },
   loadingSubtitle: { fontSize: 12, color: Colors.stone500 },
-  loadingHint: { fontSize: 12, color: Colors.stone400, marginTop: 8 },
 
   // Header
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    backgroundColor: Colors.orange,
-    paddingHorizontal: 20, paddingVertical: 13,
-    shadowColor: Colors.orangeDark,
-    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 6,
+    backgroundColor: Colors.orange, paddingHorizontal: 20, paddingVertical: 13,
+    shadowColor: Colors.orangeDark, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 6,
   },
   headerBrand: { flexDirection: "row", alignItems: "center", gap: 10 },
   headerLogoBox: {
@@ -312,7 +281,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "900", color: Colors.white, letterSpacing: -0.3 },
-  headerSub: { fontSize: 10, color: "rgba(255,255,255,0.8)", fontWeight: "600", letterSpacing: 0.2 },
+  headerSub: { fontSize: 10, color: "rgba(255,255,255,0.8)", fontWeight: "600" },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 10 },
   livePill: {
     flexDirection: "row", alignItems: "center", gap: 5,
@@ -327,61 +296,34 @@ const styles = StyleSheet.create({
   },
   userAvatarText: { fontSize: 13, fontWeight: "800", color: Colors.white },
 
-  // Scroll
   scroll: { padding: 16, gap: 14, paddingBottom: 28 },
 
-  // Hero card
-  heroCard: {
-    backgroundColor: Colors.orange, borderRadius: 22, padding: 20, gap: 10,
-    overflow: "hidden",
-    shadowColor: Colors.orangeDark,
-    shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 10,
-  },
-  heroCircle1: {
-    position: "absolute", right: -30, top: -30,
-    width: 120, height: 120, borderRadius: 60,
-    backgroundColor: "rgba(255,255,255,0.07)",
-  },
-  heroCircle2: {
-    position: "absolute", right: 40, bottom: -40,
-    width: 90, height: 90, borderRadius: 45,
-    backgroundColor: "rgba(255,255,255,0.05)",
-  },
-  heroTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  heroFireBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 99,
-    paddingHorizontal: 10, paddingVertical: 4,
-  },
-  heroFireText: { fontSize: 10, fontWeight: "800", color: Colors.white, letterSpacing: 0.3 },
-  heroScorePill: {
-    backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 99,
-    paddingHorizontal: 10, paddingVertical: 4,
-  },
-  heroScoreText: { fontSize: 13, fontWeight: "900", color: Colors.white },
-  heroScoreUnit: { fontSize: 10, fontWeight: "500", color: "rgba(255,255,255,0.75)" },
-  heroProduct: { fontSize: 24, fontWeight: "900", color: Colors.white, lineHeight: 30 },
-  heroFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 2 },
-  heroLocation: { flexDirection: "row", alignItems: "center", gap: 4 },
-  heroLocationText: { fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: "600" },
-  heroAnalyzeBtn: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: Colors.white, borderRadius: 99,
-    paddingHorizontal: 14, paddingVertical: 7,
-  },
-  heroAnalyzeBtnText: { fontSize: 11, fontWeight: "800", color: Colors.orange },
+  // Page title — matches web
+  pageTitle: { gap: 2 },
+  pageTitleText: { fontSize: 20, fontWeight: "800", color: Colors.stone900 },
+  pageTitleSub: { fontSize: 12, color: Colors.stone500 },
 
-  // Stats
-  statsRow: { flexDirection: "row", gap: 10 },
-  statCard: {
-    flex: 1, backgroundColor: Colors.white, borderRadius: 16, padding: 12,
-    borderWidth: 1, borderColor: Colors.stone200, gap: 2,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+  // KPI Cards — matches web rounded-2xl border bg-white shadow-sm
+  kpiGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  kpiCard: {
+    width: "47.5%", backgroundColor: Colors.white, borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: Colors.stone200,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+    gap: 2,
   },
-  statCardFirst: {},
-  statIcon: { marginBottom: 4 },
-  statLabel: { fontSize: 9, color: Colors.stone400, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.3 },
-  statValue: { fontSize: 18, fontWeight: "900", color: Colors.orange },
-  statUnit: { fontSize: 9, fontWeight: "500", color: Colors.stone400 },
+  kpiCardAccent: {
+    borderColor: "#FDBA74",
+    shadowColor: Colors.orange, shadowOpacity: 0.08,
+  },
+  kpiIconWrap: {
+    width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.stone100,
+    alignItems: "center", justifyContent: "center", marginBottom: 6,
+  },
+  kpiIconAccent: { backgroundColor: "#FFF7ED" },
+  kpiLabel: { fontSize: 9, fontWeight: "600", color: Colors.stone400, textTransform: "uppercase", letterSpacing: 0.4 },
+  kpiValue: { fontSize: 16, fontWeight: "800", color: Colors.stone800, marginTop: 2 },
+  kpiValueAccent: { color: Colors.orange },
+  kpiSub: { fontSize: 10, color: Colors.stone400, marginTop: 1 },
 
   // Card
   card: {
@@ -395,14 +337,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.stone100,
   },
   cardIconWrap: {
-    width: 34, height: 34, borderRadius: 10,
-    backgroundColor: Colors.orangeBg, alignItems: "center", justifyContent: "center",
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: "#FFF7ED", alignItems: "center", justifyContent: "center",
   },
   cardTitle: { fontSize: 13, fontWeight: "800", color: Colors.stone800 },
   cardSub: { fontSize: 10, color: Colors.stone400, marginTop: 1 },
-  cardCount: { fontSize: 10, fontWeight: "700", color: Colors.stone400, backgroundColor: Colors.stone100, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 },
+  refreshBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    borderWidth: 1, borderColor: Colors.stone200, borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 5,
+  },
+  refreshText: { fontSize: 10, fontWeight: "600", color: Colors.stone500 },
 
-  // Table head
+  // Table head — matches web bg-stone-50
   tableHead: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: 14, paddingVertical: 9,
@@ -410,29 +357,22 @@ const styles = StyleSheet.create({
   },
   tableHeadCell: { fontSize: 9, fontWeight: "700", color: Colors.stone400, textTransform: "uppercase", letterSpacing: 0.4 },
 
-  // Trend row
+  // Trend rows — matches web hover:bg-orange-50
   trendRow: {
     flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 14, paddingVertical: 12, gap: 10,
+    paddingHorizontal: 14, paddingVertical: 11, gap: 10,
     borderBottomWidth: 1, borderBottomColor: Colors.stone100,
   },
   trendRowLast: { borderBottomWidth: 0 },
-  rankBadge: { width: 30, height: 30, borderRadius: 9, alignItems: "center", justifyContent: "center" },
-  rankEmoji: { fontSize: 15 },
+  rankBadge: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  rankEmoji: { fontSize: 14 },
   rankNum: { fontSize: 11, fontWeight: "800" },
-  trendInfo: { flex: 1, gap: 3 },
-  trendLabel: { fontSize: 12, fontWeight: "700", color: Colors.stone800 },
-  viralPill: {
-    alignSelf: "flex-start", backgroundColor: "#FFF7ED",
-    borderRadius: 99, paddingHorizontal: 6, paddingVertical: 1,
-    borderWidth: 1, borderColor: "#FED7AA",
-  },
-  viralText: { fontSize: 9, fontWeight: "700", color: Colors.orangeDark },
-  scoreCol: { width: 108, gap: 3 },
-  scoreBarTrack: { height: 6, borderRadius: 99, backgroundColor: "#FED7AA", overflow: "hidden" },
+  trendLabel: { flex: 1, fontSize: 12, fontWeight: "600", color: Colors.stone800 },
+  scoreCol: { width: 108 },
+  scoreInner: { flexDirection: "row", alignItems: "center", gap: 4 },
+  scoreBarTrack: { flex: 1, height: 6, borderRadius: 99, backgroundColor: "#FED7AA", overflow: "hidden" },
   scoreBarFill: { height: "100%", borderRadius: 99 },
-  scoreRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  scoreNum: { fontSize: 11, fontWeight: "800", color: Colors.stone700 },
-  deltaText: { fontSize: 9, fontWeight: "800" },
+  scoreNum: { fontSize: 11, fontWeight: "800", color: Colors.stone600, width: 22, textAlign: "right" },
+  deltaText: { fontSize: 9, fontWeight: "800", width: 22 },
   regionText: { width: 46, fontSize: 9, fontWeight: "700", color: Colors.stone500, textAlign: "right" },
 });
