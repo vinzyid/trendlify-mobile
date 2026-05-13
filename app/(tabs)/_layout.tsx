@@ -1,7 +1,33 @@
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Platform } from "react-native";
+import { Platform, TouchableOpacity } from "react-native";
 import { Colors } from "@/constants/colors";
+
+function CenterTabButton() {
+  const router = useRouter();
+  return (
+    <TouchableOpacity
+      onPress={() => router.push("/(tabs)/insight")}
+      style={{
+        top: -16,
+        alignSelf: "center",
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: Colors.orange,
+        alignItems: "center",
+        justifyContent: "center",
+        shadowColor: Colors.orange,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+        elevation: 8,
+      }}
+    >
+      <Ionicons name="add" size={28} color="white" />
+    </TouchableOpacity>
+  );
+}
 
 export default function TabsLayout() {
   return (
@@ -27,41 +53,70 @@ export default function TabsLayout() {
         tabBarIconStyle: { marginBottom: 0 },
       }}
     >
+      {/* Tab 1: Beranda */}
       <Tabs.Screen
         name="index"
         options={{
-          title: "Dashboard",
+          title: "Beranda",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "bar-chart" : "bar-chart-outline"} size={22} color={color} />
+            <Ionicons name={focused ? "home" : "home-outline"} size={22} color={color} />
           ),
         }}
       />
+
+      {/* Tab 2: Tren */}
       <Tabs.Screen
-        name="insight"
+        name="tren"
         options={{
-          title: "AI Konsultan",
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "sparkles" : "sparkles-outline"} size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="prediction"
-        options={{
-          title: "Prediksi",
+          title: "Tren",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "trending-up" : "trending-up-outline"} size={22} color={color} />
           ),
         }}
       />
+
+      {/* Hidden: prediction (navigated from tren.tsx) */}
       <Tabs.Screen
-        name="competitors"
+        name="prediction"
+        options={{ href: null }}
+      />
+
+      {/* Tab 3: Center (AI Insight) — custom floating button */}
+      <Tabs.Screen
+        name="insight"
         options={{
-          title: "Watchlist",
+          title: "",
+          tabBarIcon: () => null,
+          tabBarButton: () => <CenterTabButton />,
+        }}
+      />
+
+      {/* Tab 4: Chat */}
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: "Chat",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "eye" : "eye-outline"} size={22} color={color} />
+            <Ionicons name={focused ? "chatbubbles" : "chatbubbles-outline"} size={22} color={color} />
           ),
         }}
+      />
+
+      {/* Tab 5: Akun */}
+      <Tabs.Screen
+        name="akun"
+        options={{
+          title: "Akun",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "person" : "person-outline"} size={22} color={color} />
+          ),
+        }}
+      />
+
+      {/* Hidden: competitors (navigated from akun.tsx) */}
+      <Tabs.Screen
+        name="competitors"
+        options={{ href: null }}
       />
     </Tabs>
   );
