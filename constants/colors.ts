@@ -7,6 +7,7 @@ export const Colors = {
   stone50: "#FAFAF9",
   stone100: "#F5F5F4",
   stone200: "#E7E5E4",
+  stone300: "#D6D3D1",
   stone400: "#A8A29E",
   stone500: "#78716C",
   stone600: "#57534E",
