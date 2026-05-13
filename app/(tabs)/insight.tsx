@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, StyleSheet, Alert,
+  ActivityIndicator, StyleSheet, Alert, Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSelectedKeyword } from "@/contexts/SelectedKeywordContext";
 import { Colors } from "@/constants/colors";
 import { API_URL } from "@/constants/api";
 
@@ -60,9 +61,91 @@ const PROVIDER_LABEL: Record<string, string> = {
   stub: "Demo Mode",
 };
 
+function AnimatedCard({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: any }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(16)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 300, delay, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 300, delay, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={[style, { opacity, transform: [{ translateY }] }]}>
+      {children}
+    </Animated.View>
+  );
+}
+
+function CopyableSectionCard({
+  section, index, isOpen, onToggle, isPriority,
+}: {
+  section: { heading: string; content: string };
+  index: number; isOpen: boolean;
+  onToggle: () => void; isPriority: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function handleCopy() {
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function onPressIn() {
+    Animated.spring(scale, { toValue: 0.985, useNativeDriver: true, speed: 40 }).start();
+  }
+  function onPressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30 }).start();
+  }
+
+  return (
+    <AnimatedCard delay={index * 80} style={[styles.sectionCard, isPriority && styles.sectionCardPriority]}>
+      <TouchableOpacity
+        style={styles.sectionToggle}
+        onPress={onToggle}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        activeOpacity={1}
+      >
+        <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
+          <Text style={styles.sectionHeading} numberOfLines={2}>{section.heading}</Text>
+        </Animated.View>
+        <View style={styles.sectionToggleRight}>
+          {isPriority && (
+            <View style={styles.copyReadyBadge}>
+              <Text style={styles.copyReadyText}>Siap Copy</Text>
+            </View>
+          )}
+          <Ionicons name={isOpen ? "chevron-up" : "chevron-down"} size={15} color={Colors.stone400} />
+        </View>
+      </TouchableOpacity>
+
+      {isOpen && (
+        <View style={[styles.sectionBody, { borderTopColor: Colors.stone100, borderTopWidth: 1 }]}>
+          <Text style={styles.sectionContent}>{section.content.trim()}</Text>
+          <TouchableOpacity style={styles.copyBtn} onPress={handleCopy}>
+            <Ionicons
+              name={copied ? "checkmark-circle" : "copy-outline"}
+              size={14}
+              color={copied ? Colors.emerald : Colors.stone400}
+            />
+            <Text style={[styles.copyBtnText, copied && { color: Colors.emerald }]}>
+              {copied ? "Tersalin!" : "Copy teks"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </AnimatedCard>
+  );
+}
+
 export default function InsightScreen() {
   const { token, isLoggedIn } = useAuth();
   const router = useRouter();
+  const { setSelected } = useSelectedKeyword();
   const params = useLocalSearchParams<{ keyword?: string; score?: string; region?: string }>();
 
   const [keyword, setKeyword] = useState(params.keyword ?? "");
@@ -114,10 +197,18 @@ export default function InsightScreen() {
         }),
       });
       const json = await res.json();
+      if (res.status === 401) { Alert.alert("Sesi Habis", "Silakan logout lalu login ulang."); return; }
       if (!res.ok) { Alert.alert("Error", json.message ?? "Gagal generate."); return; }
       setResult(json.insight?.summary ?? json.summary ?? null);
       setProvider(json.insight?.provider ?? json.provider ?? null);
       setOpenSections(new Set([0, 1]));
+      // Share keyword ke tab Prediksi (mirip DashboardClient di web)
+      setSelected({
+        keyword,
+        score: score ?? 50,
+        region: params.region ?? "ID",
+        snapshotId: params.snapshotId ? parseInt(params.snapshotId as string) : null,
+      });
     } catch {
       Alert.alert("Error", "Tidak dapat terhubung ke server.");
     } finally {
@@ -201,8 +292,7 @@ export default function InsightScreen() {
             {/* Score summary — 3 cards matching web exactly */}
             {score !== undefined && !loading && (
               <View style={styles.scoreGrid}>
-                {/* Status Tren */}
-                <View style={styles.scoreCard}>
+                <AnimatedCard delay={0} style={styles.scoreCard}>
                   <View style={styles.scoreCardHeader}>
                     <Ionicons name="trending-up-outline" size={10} color={Colors.stone400} />
                     <Text style={styles.scoreCardLabel}>Status Tren</Text>
@@ -213,27 +303,25 @@ export default function InsightScreen() {
                     </Text>
                   </View>
                   <Text style={styles.scoreCardVerdict}>{scoreMeta.verdict}</Text>
-                </View>
+                </AnimatedCard>
 
-                {/* Potensi Cuan */}
-                <View style={styles.scoreCard}>
+                <AnimatedCard delay={80} style={styles.scoreCard}>
                   <View style={styles.scoreCardHeader}>
                     <Ionicons name="cash-outline" size={10} color={Colors.stone400} />
                     <Text style={styles.scoreCardLabel}>Potensi Cuan</Text>
                   </View>
                   <Text style={styles.scoreCardValue}>{scoreMeta.potential}</Text>
                   <Text style={styles.scoreCardVerdict}>skor {score}/100</Text>
-                </View>
+                </AnimatedCard>
 
-                {/* Rekomendasi */}
-                <View style={styles.scoreCard}>
+                <AnimatedCard delay={160} style={styles.scoreCard}>
                   <View style={styles.scoreCardHeader}>
                     <Ionicons name="flash-outline" size={10} color={Colors.stone400} />
                     <Text style={styles.scoreCardLabel}>Rekomendasi</Text>
                   </View>
                   <Text style={[styles.scoreCardValue, { color: Colors.orange }]}>{scoreMeta.action}</Text>
                   <Text style={styles.scoreCardVerdict}>data Trendlify</Text>
-                </View>
+                </AnimatedCard>
               </View>
             )}
 
@@ -290,38 +378,14 @@ export default function InsightScreen() {
                   const isPriority = /caption|tiktok|script|konten siap/i.test(section.heading);
 
                   return (
-                    <View
+                    <CopyableSectionCard
                       key={i}
-                      style={[styles.sectionCard, isPriority && styles.sectionCardPriority]}
-                    >
-                      {/* Section header */}
-                      <TouchableOpacity
-                        style={styles.sectionToggle}
-                        onPress={() => toggleSection(i)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.sectionHeading} numberOfLines={2}>{section.heading}</Text>
-                        <View style={styles.sectionToggleRight}>
-                          {isPriority && (
-                            <View style={styles.copyReadyBadge}>
-                              <Text style={styles.copyReadyText}>Siap Copy</Text>
-                            </View>
-                          )}
-                          <Ionicons
-                            name={isOpen ? "chevron-up" : "chevron-down"}
-                            size={15}
-                            color={Colors.stone400}
-                          />
-                        </View>
-                      </TouchableOpacity>
-
-                      {/* Section body */}
-                      {isOpen && (
-                        <View style={[styles.sectionBody, { borderTopColor: Colors.stone100, borderTopWidth: 1 }]}>
-                          <Text style={styles.sectionContent}>{section.content.trim()}</Text>
-                        </View>
-                      )}
-                    </View>
+                      section={section}
+                      index={i}
+                      isOpen={isOpen}
+                      onToggle={() => toggleSection(i)}
+                      isPriority={isPriority}
+                    />
                   );
                 })}
               </View>
@@ -456,6 +520,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7, paddingVertical: 2,
   },
   copyReadyText: { fontSize: 8, fontWeight: "800", color: Colors.orange, textTransform: "uppercase", letterSpacing: 0.3 },
-  sectionBody: { paddingHorizontal: 14, paddingVertical: 12 },
+  sectionBody: { paddingHorizontal: 14, paddingVertical: 12, gap: 10 },
   sectionContent: { fontSize: 13, color: Colors.stone700, lineHeight: 22 },
+  copyBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start",
+    backgroundColor: Colors.stone50, borderRadius: 8, borderWidth: 1, borderColor: Colors.stone200,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  copyBtnText: { fontSize: 11, fontWeight: "600", color: Colors.stone400 },
 });

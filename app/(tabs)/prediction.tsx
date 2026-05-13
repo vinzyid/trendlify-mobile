@@ -1,12 +1,13 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, ScrollView,
-  ActivityIndicator, StyleSheet, Alert,
+  ActivityIndicator, StyleSheet, Alert, Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSelectedKeyword } from "@/contexts/SelectedKeywordContext";
 import { Colors } from "@/constants/colors";
 import { API_URL } from "@/constants/api";
 
@@ -19,14 +20,84 @@ type Prediction = {
 
 const HORIZONS = [7, 14, 30];
 
+function AnimatedConfidenceBar({ value }: { value: number }) {
+  const width = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(width, {
+      toValue: value,
+      duration: 900,
+      delay: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [value]);
+
+  const animatedWidth = width.interpolate({ inputRange: [0, 100], outputRange: ["0%", "100%"] });
+
+  return (
+    <View style={styles.confBarTrack}>
+      <Animated.View style={[styles.confBarFill, { width: animatedWidth }]} />
+    </View>
+  );
+}
+
+function FadeInCard({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: any }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.94)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 350, delay, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, delay, useNativeDriver: true, damping: 14, stiffness: 120 }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={[style, { opacity, transform: [{ scale }] }]}>
+      {children}
+    </Animated.View>
+  );
+}
+
+function HorizonButton({
+  h, active, onPress, disabled,
+}: { h: number; active: boolean; onPress: () => void; disabled: boolean }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function onPressIn() {
+    Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 40 }).start();
+  }
+  function onPressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30 }).start();
+  }
+
+  return (
+    <TouchableOpacity
+      style={{ flex: 1 }}
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      disabled={disabled}
+      activeOpacity={1}
+    >
+      <Animated.View style={[styles.horizonBtn, active && styles.horizonBtnActive, { transform: [{ scale }] }]}>
+        <Text style={[styles.horizonBtnNum, active && styles.horizonBtnNumActive]}>{h}</Text>
+        <Text style={[styles.horizonBtnUnit, active && styles.horizonBtnUnitActive]}>hari</Text>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
 export default function PredictionScreen() {
   const { token, isLoggedIn } = useAuth();
   const router = useRouter();
+  const { selected } = useSelectedKeyword();
   const params = useLocalSearchParams<{ keyword?: string; score?: string; snapshotId?: string }>();
 
-  const keyword = params.keyword ?? "";
-  const score = params.score ? parseInt(params.score) : 50;
-  const snapshotId = params.snapshotId ? parseInt(params.snapshotId) : null;
+  // Pakai params kalau ada (dari Dashboard), fallback ke shared context (dari AI Konsultan)
+  const keyword = params.keyword ?? selected?.keyword ?? "";
+  const score = params.score ? parseInt(params.score) : (selected?.score ?? 50);
+  const snapshotId = params.snapshotId ? parseInt(params.snapshotId) : (selected?.snapshotId ?? null);
 
   const [horizon, setHorizon] = useState(14);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
@@ -52,6 +123,7 @@ export default function PredictionScreen() {
         body: JSON.stringify(body),
       });
       const json = await res.json();
+      if (res.status === 401) { Alert.alert("Sesi Habis", "Silakan logout lalu login ulang."); return; }
       if (!res.ok) { Alert.alert("Error", json.message ?? "Gagal."); return; }
       setPrediction(json.prediction ?? null);
     } catch {
@@ -114,8 +186,11 @@ export default function PredictionScreen() {
               </View>
             ) : (
               <View style={styles.noKeywordCard}>
-                <Ionicons name="arrow-back-circle-outline" size={22} color={Colors.stone300} />
-                <Text style={styles.noKeywordText}>Pilih keyword dari tab Dashboard untuk prediksi otomatis.</Text>
+                <Ionicons name="information-circle-outline" size={22} color={Colors.stone300} />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={styles.noKeywordText}>Belum ada keyword dipilih.</Text>
+                  <Text style={styles.noKeywordSub}>Pilih dari tab Dashboard atau generate di tab AI Konsultan dulu.</Text>
+                </View>
               </View>
             )}
 
@@ -124,15 +199,13 @@ export default function PredictionScreen() {
               <Text style={styles.sectionTitle}>Horizon Prediksi</Text>
               <View style={styles.horizonRow}>
                 {HORIZONS.map((h) => (
-                  <TouchableOpacity
+                  <HorizonButton
                     key={h}
-                    style={[styles.horizonBtn, horizon === h && styles.horizonBtnActive]}
+                    h={h}
+                    active={horizon === h}
                     onPress={() => selectHorizon(h)}
                     disabled={loading}
-                  >
-                    <Text style={[styles.horizonBtnNum, horizon === h && styles.horizonBtnNumActive]}>{h}</Text>
-                    <Text style={[styles.horizonBtnUnit, horizon === h && styles.horizonBtnUnitActive]}>hari</Text>
-                  </TouchableOpacity>
+                  />
                 ))}
               </View>
             </View>
@@ -163,7 +236,7 @@ export default function PredictionScreen() {
               <>
                 {/* Main result cards */}
                 <View style={styles.resultRow}>
-                  <View style={[styles.resultBigCard, isPositive ? styles.cardGreen : styles.cardRed]}>
+                  <FadeInCard delay={0} style={[styles.resultBigCard, isPositive ? styles.cardGreen : styles.cardRed]}>
                     <Text style={styles.resultBigLabel}>Pertumbuhan</Text>
                     <Text style={[styles.resultBigValue, { color: isPositive ? Colors.emerald : Colors.red }]}>
                       {isPositive ? "+" : ""}{growth?.toFixed(1)}%
@@ -173,36 +246,34 @@ export default function PredictionScreen() {
                         {prediction.horizon_days} hari ke depan
                       </Text>
                     </View>
-                  </View>
-                  <View style={[styles.resultBigCard, styles.cardOrange]}>
+                  </FadeInCard>
+                  <FadeInCard delay={120} style={[styles.resultBigCard, styles.cardOrange]}>
                     <Text style={styles.resultBigLabel}>Confidence</Text>
                     <Text style={[styles.resultBigValue, { color: Colors.orange }]}>{prediction.confidence_score}%</Text>
                     <View style={styles.horizonTagSmall}>
                       <Text style={[styles.horizonTagText, { color: Colors.orange }]}>tingkat keyakinan</Text>
                     </View>
-                  </View>
+                  </FadeInCard>
                 </View>
 
                 {/* Confidence bar */}
-                <View style={styles.confBarSection}>
+                <FadeInCard delay={200} style={styles.confBarSection}>
                   <View style={styles.confBarLabelRow}>
                     <Text style={styles.confBarLabel}>Confidence Level</Text>
                     <Text style={styles.confBarValue}>{prediction.confidence_score}%</Text>
                   </View>
-                  <View style={styles.confBarTrack}>
-                    <View style={[styles.confBarFill, { width: `${prediction.confidence_score}%` as any }]} />
-                  </View>
-                </View>
+                  <AnimatedConfidenceBar value={prediction.confidence_score} />
+                </FadeInCard>
 
                 {/* Narration */}
                 {prediction.narration && (
-                  <View style={styles.narrationCard}>
+                  <FadeInCard delay={300} style={styles.narrationCard}>
                     <View style={styles.narrationHeader}>
                       <Ionicons name="bulb-outline" size={15} color={Colors.orange} />
                       <Text style={styles.narrationTitle}>Analisis AI</Text>
                     </View>
                     <Text style={styles.narrationText}>{prediction.narration}</Text>
-                  </View>
+                  </FadeInCard>
                 )}
 
                 {/* Recalculate */}
@@ -283,7 +354,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white, borderRadius: 14, borderWidth: 1, borderColor: Colors.stone200,
     padding: 16, flexDirection: "row", alignItems: "center", gap: 12,
   },
-  noKeywordText: { flex: 1, fontSize: 13, color: Colors.stone400, lineHeight: 20 },
+  noKeywordText: { fontSize: 13, fontWeight: "600", color: Colors.stone500 },
+  noKeywordSub: { fontSize: 11, color: Colors.stone400, lineHeight: 16 },
 
   // Section card
   sectionCard: {
@@ -294,7 +366,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 12, fontWeight: "800", color: Colors.stone700, textTransform: "uppercase", letterSpacing: 0.4 },
   horizonRow: { flexDirection: "row", gap: 10 },
   horizonBtn: {
-    flex: 1, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.stone200,
+    borderRadius: 14, borderWidth: 1.5, borderColor: Colors.stone200,
     paddingVertical: 12, alignItems: "center", backgroundColor: Colors.stone50,
   },
   horizonBtnActive: { borderColor: Colors.orange, backgroundColor: Colors.orangeBg },
