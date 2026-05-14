@@ -64,11 +64,11 @@ function getVerdictText(result: string): string {
 }
 
 function getScoreLevel(score: number) {
-  if (score >= 86) return { label: "Sangat Tinggi", labelColor: Colors.emerald, stars: 5, icon: "🔥", position: "Posisi Sangat Kuat", positionDesc: "Kesempatan emas untuk jadi market leader!" };
-  if (score >= 71) return { label: "Tinggi", labelColor: Colors.orange, stars: 4, icon: "🌟", position: "Posisi Kuat", positionDesc: "Momentum sedang memuncak, push sekarang!" };
-  if (score >= 51) return { label: "Sedang", labelColor: "#3B82F6", stars: 3, icon: "✅", position: "Posisi Baik", positionDesc: "Pasar siap digarap!" };
-  if (score >= 31) return { label: "Berkembang", labelColor: "#3B82F6", stars: 2, icon: "📈", position: "Posisi Berkembang", positionDesc: "Peluang early mover masih lebar!" };
-  return { label: "Niche", labelColor: Colors.stone400, stars: 1, icon: "🔍", position: "Niche", positionDesc: "Potensi spesialisasi unik!" };
+  if (score >= 86) return { label: "Sangat Tinggi", labelColor: Colors.emerald, stars: 5, icon: "flame" as const, iconBg: "#F0FDF4", position: "Posisi Sangat Kuat", positionDesc: "Kesempatan emas untuk jadi market leader!" };
+  if (score >= 71) return { label: "Tinggi", labelColor: Colors.orange, stars: 4, icon: "trending-up" as const, iconBg: "#FFF7ED", position: "Posisi Kuat", positionDesc: "Momentum sedang memuncak, push sekarang!" };
+  if (score >= 51) return { label: "Sedang", labelColor: "#3B82F6", stars: 3, icon: "bulb-outline" as const, iconBg: "#EFF6FF", position: "Posisi Baik", positionDesc: "Pasar siap digarap!" };
+  if (score >= 31) return { label: "Berkembang", labelColor: "#8B5CF6", stars: 2, icon: "arrow-up-circle-outline" as const, iconBg: "#F5F3FF", position: "Posisi Berkembang", positionDesc: "Peluang early mover masih lebar!" };
+  return { label: "Niche", labelColor: Colors.stone400, stars: 1, icon: "search-outline" as const, iconBg: Colors.stone100, position: "Niche", positionDesc: "Potensi spesialisasi unik!" };
 }
 
 function getMetrics(score: number) {
@@ -97,6 +97,33 @@ function getInsightCards(score: number) {
     { icon: "heart-outline" as const, iconBg: "#FFF0F3", iconColor: "#F43F5E", title: "Disukai Gen Z & Milenial", sub: "Konten FYP meningkat" },
     { icon: "logo-tiktok" as const, iconBg: "#F5F3FF", iconColor: "#7C3AED", title: "Konten TikTok Ramai", sub: `+${Math.round(score * 0.87)}% views (30 hari)` },
   ];
+}
+
+function stripEmoji(text: string): string {
+  return text.replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]|\u{FE0F}/gu, "").trim();
+}
+
+function getSectionIcon(heading: string): { name: string; color: string; bg: string } {
+  const h = heading.toLowerCase();
+  if (h.includes("verdict"))
+    return { name: "sparkles-outline", color: Colors.orange, bg: "#FFF7ED" };
+  if (h.includes("skor") || h.includes("posisi") || h.includes("kompetitif"))
+    return { name: "bar-chart-outline", color: Colors.orange, bg: "#FFF7ED" };
+  if (h.includes("kalkulasi") || h.includes("cuan") || h.includes("keuntungan") || h.includes("harga"))
+    return { name: "cash-outline", color: Colors.emerald, bg: "#F0FDF4" };
+  if (h.includes("pembeli") || h.includes("profil") || h.includes("target") || h.includes("audien"))
+    return { name: "people-outline", color: "#3B82F6", bg: "#EFF6FF" };
+  if (h.includes("strategi") || h.includes("promosi") || h.includes("marketing"))
+    return { name: "megaphone-outline", color: "#8B5CF6", bg: "#F5F3FF" };
+  if (h.includes("konten") || h.includes("caption") || h.includes("copy") || h.includes("tiktok") || h.includes("script"))
+    return { name: "create-outline", color: "#EC4899", bg: "#FDF2F8" };
+  if (h.includes("action") || h.includes("langkah") || h.includes("hari") || h.includes("plan") || h.includes("besok"))
+    return { name: "calendar-outline", color: "#F59E0B", bg: "#FFFBEB" };
+  if (h.includes("kompetitor") || h.includes("pesaing") || h.includes("saingan"))
+    return { name: "git-compare-outline", color: Colors.red, bg: "#FEF2F2" };
+  if (h.includes("risiko") || h.includes("tantangan"))
+    return { name: "warning-outline", color: "#F59E0B", bg: "#FFFBEB" };
+  return { name: "document-text-outline", color: Colors.stone500, bg: Colors.stone100 };
 }
 
 function parseScoreFromText(text: string): number | null {
@@ -323,8 +350,8 @@ export default function InsightScreen() {
                     {/* Left */}
                     <View style={{ flex: 1, gap: 6 }}>
                       <View style={styles.verdictLabelRow}>
-                        <View style={styles.verdictIconCircle}>
-                          <Text style={{ fontSize: 18 }}>{scoreLevel.icon}</Text>
+                        <View style={[styles.verdictIconCircle, { backgroundColor: scoreLevel.iconBg, borderColor: scoreLevel.labelColor + "30" }]}>
+                          <Ionicons name={scoreLevel.icon} size={20} color={scoreLevel.labelColor} />
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.verdictSmallLabel}>VERDICT</Text>
@@ -449,7 +476,10 @@ export default function InsightScreen() {
                       return (
                         <AnimatedCard key={i} delay={i * 50} style={[styles.sectionDetailCard, isPriority && styles.sectionDetailCardPriority]}>
                           <TouchableOpacity style={styles.sectionToggle} onPress={() => toggleSection(i)} activeOpacity={0.8}>
-                            <Text style={styles.sectionHeading} numberOfLines={2}>{section.heading}</Text>
+                            <View style={[styles.sectionIconBox, { backgroundColor: getSectionIcon(section.heading).bg }]}>
+                              <Ionicons name={getSectionIcon(section.heading).name as any} size={15} color={getSectionIcon(section.heading).color} />
+                            </View>
+                            <Text style={styles.sectionHeading} numberOfLines={2}>{stripEmoji(section.heading)}</Text>
                             <View style={styles.sectionToggleRight}>
                               {isPriority && <View style={styles.copyReadyBadge}><Text style={styles.copyReadyText}>Siap Copy</Text></View>}
                               <Ionicons name={isOpen ? "chevron-up" : "chevron-down"} size={15} color={Colors.stone400} />
@@ -601,7 +631,8 @@ const styles = StyleSheet.create({
   // Detail sections
   sectionDetailCard: { backgroundColor: Colors.white, borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: Colors.stone200 },
   sectionDetailCardPriority: { borderColor: "#FDBA74", backgroundColor: "#FFFBF5" },
-  sectionToggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 12 },
+  sectionToggle: { flexDirection: "row", alignItems: "center", gap: 10, justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 12 },
+  sectionIconBox: { width: 30, height: 30, borderRadius: 9, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   sectionHeading: { flex: 1, fontSize: 13, fontWeight: "700", color: Colors.stone800, lineHeight: 18 },
   sectionToggleRight: { flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 8 },
   copyReadyBadge: { backgroundColor: "#FFF7ED", borderRadius: 99, paddingHorizontal: 7, paddingVertical: 2 },

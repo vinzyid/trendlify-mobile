@@ -4,8 +4,9 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Alert,
+  Modal,
 } from "react-native";
+import { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -38,6 +39,7 @@ const AKUN_ITEMS: SettingItem[] = [
     iconColor: Colors.orange,
     label: "Ubah Password",
     sub: "Perbarui password akun kamu",
+    route: "/change-password",
   },
   {
     icon: "shield-checkmark-outline",
@@ -110,23 +112,24 @@ const LAINNYA_ITEMS: SettingItem[] = [
 export default function AkunScreen() {
   const router = useRouter();
   const { logout, user } = useAuth();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [comingSoonLabel, setComingSoonLabel] = useState<string | null>(null);
 
-  function handleComingSoon() {
-    Alert.alert("Segera hadir!", "Fitur ini sedang dalam pengembangan.");
+  function handleComingSoon(label: string) {
+    setComingSoonLabel(label);
   }
 
-  function handleLogout() {
-    Alert.alert("Keluar dari Akun", "Apakah kamu yakin ingin keluar?", [
-      { text: "Batal", style: "cancel" },
-      { text: "Keluar", style: "destructive", onPress: () => logout() },
-    ]);
+  async function confirmLogout() {
+    setShowLogoutModal(false);
+    await logout();
+    router.replace("/login");
   }
 
   function handlePress(item: SettingItem) {
     if (item.route) {
       router.push(item.route as any);
     } else {
-      handleComingSoon();
+      handleComingSoon(item.label);
     }
   }
 
@@ -160,9 +163,6 @@ export default function AkunScreen() {
       <View style={styles.header}>
         {/* Top bar */}
         <View style={styles.headerTop}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.push("/(tabs)/index")}>
-            <Ionicons name="chevron-back" size={20} color={Colors.white} />
-          </TouchableOpacity>
           <Text style={styles.headerLabel}>Pengaturan</Text>
           <TouchableOpacity style={styles.editBtn} onPress={() => router.push("/profile")}>
             <Ionicons name="create-outline" size={18} color={Colors.white} />
@@ -214,7 +214,7 @@ export default function AkunScreen() {
         </View>
 
         {/* ── Keluar ── */}
-        <TouchableOpacity style={styles.logoutCard} onPress={handleLogout} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.logoutCard} onPress={() => setShowLogoutModal(true)} activeOpacity={0.7}>
           <View style={[styles.rowIcon, { backgroundColor: "#FEF2F2" }]}>
             <Ionicons name="exit-outline" size={18} color={Colors.red} />
           </View>
@@ -227,6 +227,102 @@ export default function AkunScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* ── Coming Soon Modal ── */}
+      <Modal
+        visible={comingSoonLabel !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setComingSoonLabel(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setComingSoonLabel(null)}
+        >
+          <View style={styles.modalSheet} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHandle} />
+
+            {/* Rocket icon with decorative dots */}
+            <View style={styles.csIconArea}>
+              <View style={styles.csDot1} />
+              <View style={styles.csDot2} />
+              <View style={styles.csIconWrap}>
+                <Ionicons name="construct-outline" size={30} color={Colors.orange} />
+              </View>
+            </View>
+
+            <Text style={styles.csTag}>SEGERA HADIR</Text>
+            <Text style={styles.modalTitle}>{comingSoonLabel}</Text>
+            <Text style={styles.modalSub}>
+              Fitur ini sedang dalam pengembangan dan akan segera tersedia. Nantikan pembaruan berikutnya!
+            </Text>
+
+            {/* Progress bar decoration */}
+            <View style={styles.csProgress}>
+              <View style={styles.csProgressFill} />
+            </View>
+            <Text style={styles.csProgressLabel}>Dalam pengembangan…</Text>
+
+            <TouchableOpacity
+              style={styles.csBtnClose}
+              onPress={() => setComingSoonLabel(null)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.csBtnCloseText}>Oke, Mengerti!</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Logout Modal ── */}
+      <Modal
+        visible={showLogoutModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLogoutModal(false)}
+        >
+          <View style={styles.modalSheet} onStartShouldSetResponder={() => true}>
+            {/* Handle bar */}
+            <View style={styles.modalHandle} />
+
+            {/* Icon */}
+            <View style={styles.modalIconWrap}>
+              <Ionicons name="exit-outline" size={28} color={Colors.red} />
+            </View>
+
+            {/* Text */}
+            <Text style={styles.modalTitle}>Keluar dari Akun?</Text>
+            <Text style={styles.modalSub}>
+              Sesi kamu akan diakhiri dan kamu perlu login ulang untuk mengakses Trendlify.
+            </Text>
+
+            {/* Buttons */}
+            <View style={styles.modalBtns}>
+              <TouchableOpacity
+                style={styles.modalBtnCancel}
+                onPress={() => setShowLogoutModal(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalBtnCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalBtnLogout}
+                onPress={confirmLogout}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="exit-outline" size={16} color={Colors.white} />
+                <Text style={styles.modalBtnLogoutText}>Ya, Keluar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -385,4 +481,175 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   logoutLabel: { fontSize: 14, fontWeight: "700", color: Colors.red },
+
+  // ── Coming Soon Modal ──
+  csIconArea: {
+    position: "relative",
+    width: 80,
+    height: 80,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  csDot1: {
+    position: "absolute",
+    top: 4,
+    right: 6,
+    width: 12,
+    height: 12,
+    borderRadius: 99,
+    backgroundColor: "#FED7AA",
+  },
+  csDot2: {
+    position: "absolute",
+    bottom: 6,
+    left: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 99,
+    backgroundColor: "#FDBA74",
+  },
+  csIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: Colors.orangeBg,
+    borderWidth: 1.5,
+    borderColor: "#FED7AA",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  csTag: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: Colors.orange,
+    letterSpacing: 1.2,
+    backgroundColor: Colors.orangeBg,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 99,
+    overflow: "hidden",
+  },
+  csProgress: {
+    width: "100%",
+    height: 6,
+    backgroundColor: Colors.stone100,
+    borderRadius: 99,
+    overflow: "hidden",
+    marginTop: 4,
+  },
+  csProgressFill: {
+    width: "65%",
+    height: "100%",
+    backgroundColor: Colors.orange,
+    borderRadius: 99,
+  },
+  csProgressLabel: {
+    fontSize: 11,
+    color: Colors.stone400,
+    fontWeight: "600",
+    marginTop: -4,
+    marginBottom: 4,
+  },
+  csBtnClose: {
+    width: "100%",
+    backgroundColor: Colors.orange,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: "center",
+    shadowColor: Colors.orange,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  csBtnCloseText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: Colors.white,
+  },
+
+  // ── Logout Modal ──
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 36,
+    alignItems: "center",
+    gap: 10,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 99,
+    backgroundColor: Colors.stone200,
+    marginBottom: 8,
+  },
+  modalIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: "#FEF2F2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: Colors.stone900,
+    textAlign: "center",
+  },
+  modalSub: {
+    fontSize: 13,
+    color: Colors.stone500,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  modalBtns: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  modalBtnCancel: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: Colors.stone200,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  modalBtnCancelText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.stone600,
+  },
+  modalBtnLogout: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: Colors.red,
+    borderRadius: 16,
+    paddingVertical: 14,
+    shadowColor: Colors.red,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalBtnLogoutText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: Colors.white,
+  },
 });
