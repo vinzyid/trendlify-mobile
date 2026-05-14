@@ -12,422 +12,377 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { Colors } from "@/constants/colors";
 
-type MenuItem = {
+type SettingItem = {
   icon: string;
+  iconBg: string;
+  iconColor: string;
   label: string;
-  onPress: () => void;
+  sub: string;
+  value?: string;
+  route?: string;
   danger?: boolean;
 };
 
+const AKUN_ITEMS: SettingItem[] = [
+  {
+    icon: "person-outline",
+    iconBg: "#FFF0E6",
+    iconColor: Colors.orange,
+    label: "Informasi Akun",
+    sub: "Lihat dan ubah informasi profil kamu",
+    route: "/profile",
+  },
+  {
+    icon: "lock-closed-outline",
+    iconBg: "#FFF0E6",
+    iconColor: Colors.orange,
+    label: "Ubah Password",
+    sub: "Perbarui password akun kamu",
+  },
+  {
+    icon: "shield-checkmark-outline",
+    iconBg: "#FFF0E6",
+    iconColor: Colors.orange,
+    label: "Keamanan Akun",
+    sub: "Kelola keamanan dan aktivitas login",
+  },
+];
+
+const PREFERENSI_ITEMS: SettingItem[] = [
+  {
+    icon: "heart-outline",
+    iconBg: "#FFF0F3",
+    iconColor: "#F43F5E",
+    label: "Kategori Favorit",
+    sub: "Pilih kategori kuliner yang kamu minati",
+  },
+  {
+    icon: "location-outline",
+    iconBg: "#F0FDF4",
+    iconColor: Colors.emerald,
+    label: "Lokasi Trend",
+    sub: "Atur lokasi untuk rekomendasi tren",
+    value: "Jakarta",
+  },
+  {
+    icon: "notifications-outline",
+    iconBg: "#F5F3FF",
+    iconColor: "#8B5CF6",
+    label: "Notifikasi",
+    sub: "Atur jenis notifikasi yang kamu terima",
+    route: "/notifications",
+  },
+  {
+    icon: "globe-outline",
+    iconBg: "#EFF6FF",
+    iconColor: "#3B82F6",
+    label: "Bahasa",
+    sub: "Pilih bahasa yang kamu gunakan",
+    value: "Bahasa Indonesia",
+  },
+];
+
+const LAINNYA_ITEMS: SettingItem[] = [
+  {
+    icon: "help-circle-outline",
+    iconBg: "#FFFBEB",
+    iconColor: "#F59E0B",
+    label: "Bantuan & FAQ",
+    sub: "Pusat bantuan dan pertanyaan umum",
+    route: "/bantuan",
+  },
+  {
+    icon: "document-text-outline",
+    iconBg: "#F0FDF4",
+    iconColor: Colors.emerald,
+    label: "Privasi & Keamanan",
+    sub: "Kebijakan privasi dan keamanan data",
+  },
+  {
+    icon: "information-circle-outline",
+    iconBg: "#EFF6FF",
+    iconColor: "#3B82F6",
+    label: "Tentang Trendlify",
+    sub: "Informasi aplikasi dan versi terbaru",
+  },
+];
+
 export default function AkunScreen() {
   const router = useRouter();
-  const { user, isLoggedIn, logout } = useAuth();
+  const { logout, user } = useAuth();
 
   function handleComingSoon() {
-    Alert.alert("Segera hadir!");
+    Alert.alert("Segera hadir!", "Fitur ini sedang dalam pengembangan.");
   }
 
   function handleLogout() {
-    Alert.alert(
-      "Keluar",
-      "Apakah kamu yakin ingin keluar dari akun?",
-      [
-        { text: "Batal", style: "cancel" },
-        {
-          text: "Keluar",
-          style: "destructive",
-          onPress: () => logout(),
-        },
-      ]
+    Alert.alert("Keluar dari Akun", "Apakah kamu yakin ingin keluar?", [
+      { text: "Batal", style: "cancel" },
+      { text: "Keluar", style: "destructive", onPress: () => logout() },
+    ]);
+  }
+
+  function handlePress(item: SettingItem) {
+    if (item.route) {
+      router.push(item.route as any);
+    } else {
+      handleComingSoon();
+    }
+  }
+
+  function SettingRow({ item, isLast }: { item: SettingItem; isLast: boolean }) {
+    return (
+      <TouchableOpacity
+        style={[styles.row, !isLast && styles.rowBorder]}
+        onPress={() => handlePress(item)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.rowIcon, { backgroundColor: item.iconBg }]}>
+          <Ionicons name={item.icon as any} size={18} color={item.iconColor} />
+        </View>
+        <View style={styles.rowText}>
+          <Text style={styles.rowLabel}>{item.label}</Text>
+          <Text style={styles.rowSub}>{item.sub}</Text>
+        </View>
+        {item.value ? (
+          <Text style={styles.rowValue}>{item.value}</Text>
+        ) : null}
+        <Ionicons name="chevron-forward" size={16} color={Colors.stone300} />
+      </TouchableOpacity>
     );
   }
 
-  const menuItems: MenuItem[] = [
-    {
-      icon: "person-outline",
-      label: "Profil Saya",
-      onPress: () => router.push("/profile"),
-    },
-    {
-      icon: "settings-outline",
-      label: "Pengaturan",
-      onPress: handleComingSoon,
-    },
-    {
-      icon: "notifications-outline",
-      label: "Notifikasi",
-      onPress: handleComingSoon,
-    },
-    {
-      icon: "card-outline",
-      label: "Paket & Langganan",
-      onPress: handleComingSoon,
-    },
-    {
-      icon: "receipt-outline",
-      label: "Riwayat Pembayaran",
-      onPress: handleComingSoon,
-    },
-    {
-      icon: "help-circle-outline",
-      label: "Bantuan & FAQ",
-      onPress: handleComingSoon,
-    },
-  ];
-
-  const avatarLetter =
-    user?.name?.charAt(0)?.toUpperCase() ?? null;
+  const initials = (user?.name ?? "U").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* ── Header ── */}
+      <View style={styles.header}>
+        {/* Top bar */}
+        <View style={styles.headerTop}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.push("/(tabs)/index")}>
+            <Ionicons name="chevron-back" size={20} color={Colors.white} />
+          </TouchableOpacity>
+          <Text style={styles.headerLabel}>Pengaturan</Text>
+          <TouchableOpacity style={styles.editBtn} onPress={() => router.push("/profile")}>
+            <Ionicons name="create-outline" size={18} color={Colors.white} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Profile info */}
+        <View style={styles.profileRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{user?.name ?? "Pengguna"}</Text>
+            <Text style={styles.profileEmail}>{user?.email ?? ""}</Text>
+            <View style={styles.roleBadge}>
+              <Ionicons name="storefront-outline" size={11} color={Colors.orange} />
+              <Text style={styles.roleText}>UMKM Kuliner</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
-        {/* ── Orange header / profile section ── */}
-        <View style={styles.profileHeader}>
-          {isLoggedIn && user ? (
-            <>
-              {/* Avatar + edit row */}
-              <View style={styles.profileTopRow}>
-                {/* Avatar */}
-                <View style={styles.avatar}>
-                  {avatarLetter ? (
-                    <Text style={styles.avatarLetter}>{avatarLetter}</Text>
-                  ) : (
-                    <Text style={styles.avatarEmoji}>👤</Text>
-                  )}
-                </View>
-
-                {/* Name, badge, email */}
-                <View style={styles.profileInfo}>
-                  <Text style={styles.profileName} numberOfLines={1}>
-                    {user.name}
-                  </Text>
-                  <View style={styles.premiumBadge}>
-                    <Ionicons name="star" size={10} color={Colors.amber} />
-                    <Text style={styles.premiumBadgeText}>UMKM Premium</Text>
-                  </View>
-                  <Text style={styles.profileEmail} numberOfLines={1}>
-                    {user.email}
-                  </Text>
-                </View>
-
-                {/* Edit chevron */}
-                <TouchableOpacity onPress={() => router.push("/profile")} style={styles.editChevron}>
-                  <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.8)" />
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            /* Not logged in state */
-            <View style={styles.loginPrompt}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarEmoji}>👤</Text>
-              </View>
-              <Text style={styles.loginPromptText}>
-                Masuk untuk melanjutkan
-              </Text>
-              <TouchableOpacity
-                style={styles.loginBtn}
-                onPress={() => router.push("/login")}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="log-in-outline" size={15} color={Colors.orange} />
-                <Text style={styles.loginBtnText}>Masuk</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* ── Premium upgrade card ── */}
-        <View style={styles.upgradeCard}>
-          <View style={styles.upgradeLeft}>
-            <Ionicons name="trophy" size={24} color={Colors.amber} />
-          </View>
-          <View style={styles.upgradeMiddle}>
-            <Text style={styles.upgradeTitle}>Upgrade ke Premium</Text>
-            <Text style={styles.upgradeDesc} numberOfLines={2}>
-              Dapatkan insight lebih dalam, prediksi lebih akurat, dan fitur
-              eksklusif lainnya.
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.upgradeBtn}
-            onPress={handleComingSoon}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.upgradeBtnText}>Upgrade{"\n"}Sekarang →</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Menu list ── */}
-        <View style={styles.menuCard}>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.menuRow,
-                index === menuItems.length - 1 && styles.menuRowLast,
-              ]}
-              onPress={item.onPress}
-              activeOpacity={0.7}
-            >
-              <View style={styles.menuIconWrap}>
-                <Ionicons
-                  name={item.icon as any}
-                  size={18}
-                  color={Colors.stone600}
-                />
-              </View>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={Colors.stone400}
-              />
-            </TouchableOpacity>
+        {/* ── AKUN ── */}
+        <Text style={styles.sectionLabel}>AKUN</Text>
+        <View style={styles.card}>
+          {AKUN_ITEMS.map((item, i) => (
+            <SettingRow key={item.label} item={item} isLast={i === AKUN_ITEMS.length - 1} />
           ))}
         </View>
 
-        {/* ── Keluar button ── */}
-        <View style={styles.logoutCard}>
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={handleLogout}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.menuIconWrap, styles.logoutIconWrap]}>
-              <Ionicons name="log-out-outline" size={18} color={Colors.red} />
-            </View>
-            <Text style={styles.logoutLabel}>Keluar</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.stone400} />
-          </TouchableOpacity>
+        {/* ── PREFERENSI ── */}
+        <Text style={styles.sectionLabel}>PREFERENSI</Text>
+        <View style={styles.card}>
+          {PREFERENSI_ITEMS.map((item, i) => (
+            <SettingRow key={item.label} item={item} isLast={i === PREFERENSI_ITEMS.length - 1} />
+          ))}
         </View>
 
-        {/* Bottom spacer */}
-        <View style={{ height: 16 }} />
+        {/* ── LAINNYA ── */}
+        <Text style={styles.sectionLabel}>LAINNYA</Text>
+        <View style={styles.card}>
+          {LAINNYA_ITEMS.map((item, i) => (
+            <SettingRow key={item.label} item={item} isLast={i === LAINNYA_ITEMS.length - 1} />
+          ))}
+        </View>
+
+        {/* ── Keluar ── */}
+        <TouchableOpacity style={styles.logoutCard} onPress={handleLogout} activeOpacity={0.7}>
+          <View style={[styles.rowIcon, { backgroundColor: "#FEF2F2" }]}>
+            <Ionicons name="exit-outline" size={18} color={Colors.red} />
+          </View>
+          <View style={styles.rowText}>
+            <Text style={styles.logoutLabel}>Keluar dari Akun</Text>
+            <Text style={styles.rowSub}>Logout dari akun kamu saat ini</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={Colors.stone300} />
+        </TouchableOpacity>
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.stone100,
-  },
-  scroll: {
-    paddingBottom: 32,
-  },
+  container: { flex: 1, backgroundColor: "#F2F2F7" },
 
-  // ── Profile header ──
-  profileHeader: {
+  // ── Header ──
+  header: {
     backgroundColor: Colors.orange,
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 36,
+    paddingTop: 8,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-  profileTopRow: {
+  headerTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  headerLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.white,
+    letterSpacing: 0.2,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  editBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderWidth: 2.5,
+    borderColor: "rgba(255,255,255,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: Colors.white,
+  },
+  profileInfo: { flex: 1, gap: 3 },
+  profileName: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: Colors.white,
+    letterSpacing: -0.3,
+  },
+  profileEmail: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.8)",
+  },
+  roleBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.white,
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    marginTop: 4,
+  },
+  roleText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: Colors.orange,
+  },
+
+  scroll: { paddingHorizontal: 16, paddingTop: 20, gap: 6 },
+
+  // ── Section label ──
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: Colors.stone400,
+    letterSpacing: 0.8,
+    marginTop: 12,
+    marginBottom: 6,
+    marginLeft: 4,
+  },
+
+  // ── Card ──
+  card: {
+    backgroundColor: Colors.white,
+    borderRadius: 18,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+
+  // ── Row ──
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 14,
+  },
+  rowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#F2F2F7",
+  },
+  rowIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rowText: { flex: 1, gap: 2 },
+  rowLabel: { fontSize: 14, fontWeight: "700", color: Colors.stone800 },
+  rowSub: { fontSize: 12, color: Colors.stone400 },
+  rowValue: { fontSize: 13, fontWeight: "600", color: Colors.orange, marginRight: 4 },
+
+  // ── Logout ──
+  logoutCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-  },
-  avatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    marginTop: 12,
     backgroundColor: Colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.5)",
-  },
-  avatarLetter: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: Colors.orange,
-  },
-  avatarEmoji: {
-    fontSize: 32,
-  },
-  profileInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  profileName: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.white,
-  },
-  premiumBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 99,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  premiumBadgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: Colors.white,
-  },
-  profileEmail: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.8)",
-  },
-  editChevron: {
-    padding: 4,
-  },
-
-  // Not logged in
-  loginPrompt: {
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 8,
-  },
-  loginPromptText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.white,
-  },
-  loginBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  loginBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: Colors.orange,
-  },
-
-  // ── Premium upgrade card ──
-  upgradeCard: {
-    marginHorizontal: 16,
-    marginTop: -16,
-    borderRadius: 16,
-    backgroundColor: "#1C1917",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  upgradeLeft: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "rgba(245,158,11,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  upgradeMiddle: {
-    flex: 1,
-    gap: 3,
-  },
-  upgradeTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: Colors.white,
-  },
-  upgradeDesc: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.6)",
-    lineHeight: 16,
-  },
-  upgradeBtn: {
-    backgroundColor: Colors.orange,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    alignItems: "center",
-    shadowColor: Colors.orange,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  upgradeBtnText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: Colors.white,
-    textAlign: "center",
-    lineHeight: 16,
-  },
-
-  // ── Menu cards ──
-  menuCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    backgroundColor: Colors.white,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  menuRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.stone100,
-  },
-  menuRowLast: {
-    borderBottomWidth: 0,
-  },
-  menuIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: Colors.stone100,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  menuLabel: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.stone800,
-  },
-
-  // ── Logout card ──
-  logoutCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    backgroundColor: Colors.white,
-    overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  logoutIconWrap: {
-    backgroundColor: "#FEF2F2",
-  },
-  logoutLabel: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.red,
-  },
+  logoutLabel: { fontSize: 14, fontWeight: "700", color: Colors.red },
 });

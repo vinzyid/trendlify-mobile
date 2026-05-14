@@ -11,13 +11,13 @@ import { useSelectedKeyword } from "@/contexts/SelectedKeywordContext";
 import { Colors } from "@/constants/colors";
 import { API_URL } from "@/constants/api";
 
-type Snapshot = {
+type HistoryItem = {
   id: number;
-  entity_label: string;
-  trend_score: number;
-  prev_score: number | null;
-  region_code: string;
-  created_at?: string;
+  keyword: string;
+  score: number | null;
+  region: string;
+  provider: string;
+  createdAt: string;
 };
 
 const REGION_LABELS: Record<string, string> = {
@@ -62,26 +62,36 @@ function getScoreLabel(score: number) {
   return "NICHE";
 }
 
+const PROVIDER_LABEL: Record<string, string> = {
+  openrouter: "Gemini Pro",
+  gemini: "Gemini Flash",
+  groq: "GPT-OSS",
+  stub: "Demo",
+};
+
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+}
+
 export default function RiwayatScreen() {
   const { token, isLoggedIn } = useAuth();
   const { setSelected } = useSelectedKeyword();
   const router = useRouter();
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchSnapshots = useCallback(async () => {
+  const fetchHistory = useCallback(async () => {
+    if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/v1/trends?limit=50`, {
-        headers: {
-          Accept: "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+      const res = await fetch(`${API_URL}/api/v1/insights/history`, {
+        headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const json = await res.json();
-        setSnapshots(json.data ?? []);
+        setItems(json.data ?? []);
       }
     } finally {
       setLoading(false);
@@ -89,26 +99,26 @@ export default function RiwayatScreen() {
     }
   }, [token]);
 
-  useEffect(() => { fetchSnapshots(); }, [fetchSnapshots]);
+  useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
   function onRefresh() {
     setRefreshing(true);
-    fetchSnapshots();
+    fetchHistory();
   }
 
-  function goToInsight(item: Snapshot) {
-    setSelected({ keyword: item.entity_label, score: item.trend_score, region: item.region_code, snapshotId: item.id });
+  function goToInsight(item: HistoryItem) {
+    setSelected({ keyword: item.keyword, score: item.score ?? 50, region: item.region, snapshotId: null });
     router.push({
       pathname: "/(tabs)/insight",
-      params: { keyword: item.entity_label, score: item.trend_score, region: item.region_code, snapshotId: item.id },
+      params: { keyword: item.keyword, score: item.score ?? undefined, region: item.region },
     });
   }
 
-  function goToPrediction(item: Snapshot) {
-    setSelected({ keyword: item.entity_label, score: item.trend_score, region: item.region_code, snapshotId: item.id });
+  function goToPrediction(item: HistoryItem) {
+    setSelected({ keyword: item.keyword, score: item.score ?? 50, region: item.region, snapshotId: null });
     router.push({
       pathname: "/(tabs)/prediction",
-      params: { keyword: item.entity_label, score: item.trend_score, snapshotId: item.id },
+      params: { keyword: item.keyword, score: item.score ?? undefined },
     });
   }
 
@@ -156,10 +166,10 @@ export default function RiwayatScreen() {
       </View>
 
       {/* Count bar */}
-      {!loading && snapshots.length > 0 && (
+      {!loading && items.length > 0 && (
         <View style={styles.countBar}>
           <Ionicons name="time-outline" size={13} color={Colors.stone400} />
-          <Text style={styles.countText}>{snapshots.length} data tren tersedia</Text>
+          <Text style={styles.countText}>{items.length} analisis tersimpan</Text>
         </View>
       )}
 
@@ -168,21 +178,21 @@ export default function RiwayatScreen() {
           <ActivityIndicator color={Colors.orange} size="large" />
           <Text style={styles.loadingText}>Memuat riwayat analisis…</Text>
         </View>
-      ) : snapshots.length === 0 ? (
+      ) : items.length === 0 ? (
         <View style={styles.emptyWrap}>
           <View style={styles.emptyIconWrap}>
             <Ionicons name="analytics-outline" size={36} color={Colors.stone300} />
           </View>
           <Text style={styles.emptyTitle}>Belum ada riwayat</Text>
-          <Text style={styles.emptySub}>Data tren kuliner akan muncul di sini setelah tersedia</Text>
-          <TouchableOpacity style={styles.gateBtn} onPress={() => router.push("/(tabs)/index")}>
-            <Ionicons name="home-outline" size={16} color={Colors.white} />
-            <Text style={styles.gateBtnText}>Ke Dashboard</Text>
+          <Text style={styles.emptySub}>Analisis AI yang kamu generate akan muncul di sini</Text>
+          <TouchableOpacity style={styles.gateBtn} onPress={() => router.push("/(tabs)/insight")}>
+            <Ionicons name="sparkles-outline" size={16} color={Colors.white} />
+            <Text style={styles.gateBtnText}>Mulai Analisis</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
-          data={snapshots}
+          data={items}
           keyExtractor={(s) => String(s.id)}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -190,46 +200,43 @@ export default function RiwayatScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.orange} />
           }
           renderItem={({ item }) => {
-            const delta = item.prev_score !== null ? item.trend_score - item.prev_score : null;
-            const isUp = delta !== null && delta >= 0;
-            const scoreColor = getScoreColor(item.trend_score);
-            const region = REGION_LABELS[item.region_code] ?? item.region_code;
+            const score = item.score ?? 0;
+            const scoreColor = getScoreColor(score);
+            const region = REGION_LABELS[item.region] ?? item.region;
+            const providerLabel = PROVIDER_LABEL[item.provider] ?? item.provider;
 
             return (
               <View style={styles.card}>
                 {/* Left: emoji + info */}
                 <View style={styles.cardLeft}>
                   <View style={styles.emojiWrap}>
-                    <Text style={{ fontSize: 22 }}>{getFoodEmoji(item.entity_label)}</Text>
+                    <Text style={{ fontSize: 22 }}>{getFoodEmoji(item.keyword)}</Text>
                   </View>
                   <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={styles.cardName} numberOfLines={1}>{item.entity_label}</Text>
+                    <Text style={styles.cardName} numberOfLines={1}>{item.keyword}</Text>
                     <View style={styles.cardMeta}>
-                      <View style={[styles.scoreBadge, { backgroundColor: scoreColor + "18" }]}>
-                        <Text style={[styles.scoreBadgeText, { color: scoreColor }]}>
-                          {getScoreLabel(item.trend_score)}
-                        </Text>
-                      </View>
+                      {item.score !== null && (
+                        <View style={[styles.scoreBadge, { backgroundColor: scoreColor + "18" }]}>
+                          <Text style={[styles.scoreBadgeText, { color: scoreColor }]}>
+                            {getScoreLabel(score)}
+                          </Text>
+                        </View>
+                      )}
                       <Text style={styles.regionText}>{region}</Text>
                     </View>
+                    <Text style={styles.dateText}>{formatDate(item.createdAt)} · {providerLabel}</Text>
                   </View>
                 </View>
 
-                {/* Right: score + delta */}
+                {/* Right: score */}
                 <View style={styles.cardRight}>
-                  <Text style={[styles.scoreNum, { color: scoreColor }]}>{item.trend_score}</Text>
-                  <Text style={styles.scoreMax}>/100</Text>
-                  {delta !== null && (
-                    <View style={styles.deltaRow}>
-                      <Ionicons
-                        name={isUp ? "trending-up" : "trending-down"}
-                        size={11}
-                        color={isUp ? Colors.emerald : Colors.red}
-                      />
-                      <Text style={[styles.deltaText, { color: isUp ? Colors.emerald : Colors.red }]}>
-                        {isUp ? "+" : ""}{delta}
-                      </Text>
-                    </View>
+                  {item.score !== null ? (
+                    <>
+                      <Text style={[styles.scoreNum, { color: scoreColor }]}>{item.score}</Text>
+                      <Text style={styles.scoreMax}>/100</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.scoreMax}>—</Text>
                   )}
                 </View>
 
@@ -321,6 +328,7 @@ const styles = StyleSheet.create({
   scoreBadge: { borderRadius: 99, paddingHorizontal: 7, paddingVertical: 2 },
   scoreBadgeText: { fontSize: 9, fontWeight: "800" },
   regionText: { fontSize: 10, color: Colors.stone400, fontWeight: "500" },
+  dateText: { fontSize: 10, color: Colors.stone400 },
 
   cardRight: { alignItems: "center", gap: 2, minWidth: 48 },
   scoreNum: { fontSize: 20, fontWeight: "900" },

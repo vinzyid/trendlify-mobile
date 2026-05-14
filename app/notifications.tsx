@@ -38,10 +38,10 @@ const MOCK_NOTIFS: Notification[] = [
   },
   {
     id: 3,
-    title: "🎁 Promo Premium",
-    body: "Diskon 50% untuk upgrade ke UMKM Premium hari ini saja!",
+    title: "💡 Tips UMKM Hari Ini",
+    body: "Produk dengan skor tren di atas 70 ideal untuk dijadikan menu andalan minggu ini.",
     time: "1 hari yang lalu",
-    type: "promo",
+    type: "tip",
     isRead: true,
   },
 ];

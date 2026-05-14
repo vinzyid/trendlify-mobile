@@ -51,14 +51,6 @@ export default function TrenScreen() {
       onPress: () => router.push("/heatmap"),
     },
     {
-      icon: "megaphone-outline",
-      iconBg: "#FEF3C7",
-      iconColor: "#F59E0B",
-      title: "Rekomendasi Promosi",
-      desc: "Ide konten, caption, hashtag, dan script TikTok siap pakai",
-      onPress: () => router.push("/(tabs)/insight"),
-    },
-    {
       icon: "chatbubbles-outline",
       iconBg: "#F5F3FF",
       iconColor: "#8B5CF6",
@@ -81,7 +73,7 @@ export default function TrenScreen() {
       {/* Orange header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Fitur</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push("/notifications")}>
           <Ionicons name="notifications-outline" size={22} color={Colors.white} />
         </TouchableOpacity>
       </View>
