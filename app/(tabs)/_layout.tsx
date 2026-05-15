@@ -1,34 +1,8 @@
-import { Tabs, useRouter } from "expo-router";
+import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Platform, TouchableOpacity } from "react-native";
+import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "@/constants/colors";
-
-function CenterTabButton() {
-  const router = useRouter();
-  return (
-    <TouchableOpacity
-      onPress={() => router.push("/(tabs)/insight")}
-      style={{
-        top: -16,
-        alignSelf: "center",
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: Colors.orange,
-        alignItems: "center",
-        justifyContent: "center",
-        shadowColor: Colors.orange,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-        elevation: 8,
-      }}
-    >
-      <Ionicons name="add" size={28} color="white" />
-    </TouchableOpacity>
-  );
-}
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -79,19 +53,20 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* Hidden: prediction (navigated from tren.tsx) */}
+      {/* Hidden: prediction */}
       <Tabs.Screen
         name="prediction"
         options={{ href: null }}
       />
 
-      {/* Tab 3: Center (AI Insight) — custom floating button */}
+      {/* Tab 3: Fitur (center) */}
       <Tabs.Screen
-        name="insight"
+        name="fitur"
         options={{
-          title: "",
-          tabBarIcon: () => null,
-          tabBarButton: () => <CenterTabButton />,
+          title: "Fitur",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "layers" : "layers-outline"} size={22} color={color} />
+          ),
         }}
       />
 
@@ -101,7 +76,7 @@ export default function TabsLayout() {
         options={{
           title: "Chat",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "chatbubbles" : "chatbubbles-outline"} size={22} color={color} />
+            <Ionicons name={focused ? "chatbubble" : "chatbubble-outline"} size={22} color={color} />
           ),
         }}
       />
@@ -117,11 +92,10 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* Hidden: competitors (navigated from akun.tsx) */}
-      <Tabs.Screen
-        name="competitors"
-        options={{ href: null }}
-      />
+      {/* Hidden screens */}
+      <Tabs.Screen name="insight"      options={{ href: null }} />
+      <Tabs.Screen name="competitors"  options={{ href: null }} />
+      <Tabs.Screen name="promosi"      options={{ href: null }} />
     </Tabs>
   );
 }

@@ -14,6 +14,7 @@ export default function RootLayout() {
           <Stack.Screen name="register" options={{ presentation: "modal" }} />
           <Stack.Screen name="change-password" />
           <Stack.Screen name="search" />
+          <Stack.Screen name="heatmap" />
         </Stack>
       </SelectedKeywordProvider>
     </AuthProvider>

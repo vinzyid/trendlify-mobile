@@ -42,26 +42,68 @@ function getGreeting() {
   return "Selamat malam";
 }
 
-function getFoodEmoji(name: string): string {
-  const n = name.toLowerCase();
-  if (n.includes("kopi") || n.includes("coffee")) return "☕";
-  if (n.includes("matcha") || n.includes("teh")) return "🍵";
-  if (n.includes("boba") || n.includes("bubble")) return "🧋";
-  if (n.includes("ayam")) return "🍗";
-  if (n.includes("bakso")) return "🍡";
-  if (n.includes("mie") || n.includes("mi ")) return "🍜";
-  if (n.includes("nasi")) return "🍚";
-  if (n.includes("sate")) return "🍢";
-  if (n.includes("pizza")) return "🍕";
-  if (n.includes("burger")) return "🍔";
-  if (n.includes("seblak") || n.includes("pedas")) return "🌶️";
-  if (n.includes("es ") || n.includes("ice")) return "🧊";
-  if (n.includes("kue") || n.includes("cake")) return "🎂";
-  if (n.includes("pisang")) return "🍌";
-  if (n.includes("susu") || n.includes("milk")) return "🥛";
-  if (n.includes("udang") || n.includes("ikan")) return "🦐";
-  if (n.includes("rendang") || n.includes("gulai")) return "🥘";
-  return "🍽️";
+type Cat = "Minuman" | "Tradisional" | "Modern" | "Lainnya";
+
+const CATEGORY_MAP: Record<string, Cat> = {
+  "dirty latte":"Minuman","kopi kelapa":"Minuman","kopi pandan":"Minuman",
+  "kopi gula merah":"Minuman","kopi susu aren":"Minuman","cold brew":"Minuman",
+  "americano":"Minuman","es kopi susu":"Minuman","matcha latte":"Minuman",
+  "goguma latte":"Minuman","tiger milk boba":"Minuman","cheese boba":"Minuman",
+  "brown sugar boba":"Minuman","thai tea":"Minuman","taro milk tea":"Minuman",
+  "wedang jahe":"Minuman","wedang uwuh":"Minuman","teh serai pandan":"Minuman",
+  "es teh telang":"Minuman","es teh jeruk madu":"Minuman","cendol":"Minuman",
+  "es teh manis":"Minuman","es campur":"Minuman","jus alpukat":"Minuman",
+  "es buah segar":"Minuman","rujak buah":"Tradisional",
+  "pisang goreng":"Tradisional","cilor":"Tradisional","cireng megalodon":"Tradisional",
+  "jasuke":"Tradisional","risol mayo":"Tradisional","cireng":"Tradisional",
+  "batagor":"Tradisional","siomay":"Tradisional","tahu bulat":"Tradisional",
+  "basreng":"Tradisional","keripik pedas":"Tradisional","kue cubit":"Tradisional",
+  "klepon":"Tradisional","onde-onde":"Tradisional","ayam bakar":"Tradisional",
+  "seblak":"Tradisional","bakso aci":"Tradisional","bakso malang":"Tradisional",
+  "sate taichan":"Tradisional","nasi goreng":"Tradisional","mie ayam":"Tradisional",
+  "nasi padang":"Tradisional","rendang":"Tradisional","pecel lele":"Tradisional",
+  "bebek goreng":"Tradisional","ikan bakar":"Tradisional","nasi uduk":"Tradisional",
+  "bubur ayam":"Tradisional","ketoprak":"Tradisional","gado-gado":"Tradisional",
+  "rawon":"Tradisional","soto betawi":"Tradisional","soto lamongan":"Tradisional",
+  "nasi kuning":"Tradisional","nasi liwet":"Tradisional","lontong sayur":"Tradisional",
+  "pempek":"Tradisional","coto makassar":"Tradisional","mie kocok":"Tradisional",
+  "lumpia semarang":"Tradisional","roti bakar":"Tradisional",
+  "tteokbokki":"Modern","corn dog korea":"Modern","hotteok":"Modern",
+  "kimbap":"Modern","bingsu":"Modern","injeolmi toast":"Modern",
+  "gohyong":"Modern","katsu sando":"Modern","coklat dubai":"Modern",
+  "dimsum mentai":"Modern","tanghulu":"Modern","croffle":"Modern",
+  "tissue bread":"Modern","roti sopit":"Modern","smash burger":"Modern",
+  "takoyaki":"Modern","gyoza goreng":"Modern","okonomiyaki":"Modern",
+  "udang keju":"Modern","basque cheesecake":"Modern","tiramisu cup":"Modern",
+  "mochi premium":"Modern","donat lumer":"Modern","martabak oreo":"Modern",
+  "martabak matcha":"Modern","dessert jar":"Modern","brownies lumer":"Modern",
+  "cheesecake":"Modern","pudding susu":"Modern","ayam geprek":"Modern",
+  "ayam crispy":"Modern","ayam chili padi":"Modern","mie pedas":"Modern",
+  "frozen food homemade":"Modern","rice bowl topping":"Modern","saus mentai":"Modern",
+};
+
+const MINUMAN_FB = ["kopi","latte","boba","bubble tea","thai tea","matcha latte","goguma","wedang","cendol","es teh","es kopi","jus ","es buah","minuman"];
+const TRADISIONAL_FB = ["cireng","cilor","batagor","siomay","klepon","onde","bakso","seblak","ketoprak","gado","soto","rawon","rendang","pempek","tahu","basreng","keripik","nasi","ayam bakar","mie ayam","sate","bebek","ikan bakar","bubur","lumpia","lontong"];
+const MODERN_FB = ["tteok","corn dog","croffle","burger","takoyaki","gyoza","tiramisu","mochi","donat","cheesecake","brownies","dessert","geprek","crispy","mentai","bingsu","sando","toast"];
+
+function classifyCategory(label: string): Cat {
+  const exact = CATEGORY_MAP[label.toLowerCase()];
+  if (exact) return exact;
+  const l = label.toLowerCase();
+  if (MINUMAN_FB.some(k => l.includes(k))) return "Minuman";
+  if (TRADISIONAL_FB.some(k => l.includes(k))) return "Tradisional";
+  if (MODERN_FB.some(k => l.includes(k))) return "Modern";
+  return "Lainnya";
+}
+
+type CatStyle = { icon: string; iconColor: string; iconBg: string; borderColor: string };
+function getCategoryStyle(cat: Cat): CatStyle {
+  switch (cat) {
+    case "Minuman":     return { icon: "cafe-outline",       iconColor: "#3B82F6", iconBg: "#EFF6FF", borderColor: "#BFDBFE" };
+    case "Tradisional": return { icon: "restaurant-outline", iconColor: Colors.emerald, iconBg: "#F0FDF4", borderColor: "#A7F3D0" };
+    case "Modern":      return { icon: "sparkles-outline",   iconColor: Colors.orange,  iconBg: Colors.orangeBg, borderColor: Colors.orangeLight };
+    default:            return { icon: "nutrition-outline",  iconColor: Colors.stone500, iconBg: Colors.stone100, borderColor: Colors.stone200 };
+  }
 }
 
 const REGION_LABELS: Record<string, string> = {
@@ -244,13 +286,12 @@ export default function DashboardScreen() {
           region: REGION_LABELS[t.region_code] ?? t.region_code,
           score: t.trend_score,
           delta: t.prev_score !== null ? t.trend_score - t.prev_score : null,
-          emoji: getFoodEmoji(t.entity_label),
           snapshot: t,
         }))
       : [
-          { id: -1, name: "Kopi Susu", region: "Jakarta", score: 92, delta: 18, emoji: "☕", snapshot: null },
-          { id: -2, name: "Boba Taro", region: "Jawa Barat", score: 87, delta: 12, emoji: "🧋", snapshot: null },
-          { id: -3, name: "Bakso Mercon", region: "Jawa Tengah", score: 79, delta: 8, emoji: "🍡", snapshot: null },
+          { id: -1, name: "Kopi Susu", region: "Jakarta", score: 92, delta: 18, snapshot: null },
+          { id: -2, name: "Boba Taro", region: "Jawa Barat", score: 87, delta: 12, snapshot: null },
+          { id: -3, name: "Bakso Mercon", region: "Jawa Tengah", score: 79, delta: 8, snapshot: null },
         ];
 
   // Build KPI data
@@ -399,7 +440,7 @@ export default function DashboardScreen() {
           <View style={styles.sectionIconWrap}>
             <Ionicons name="sparkles" size={14} color={Colors.orange} />
           </View>
-          <Text style={styles.sectionTitle}>AI Insight</Text>
+          <Text style={styles.sectionTitle}>AI Konsultan Kuliner</Text>
         </View>
 
         <FlatList
@@ -421,7 +462,7 @@ export default function DashboardScreen() {
               <View style={styles.carouselCard}>
                 {/* Badge */}
                 <View style={styles.carouselBadge}>
-                  <Text style={styles.carouselBadgeText}>🔥 AI Insight Untuk Kamu</Text>
+                  <Text style={styles.carouselBadgeText}>🔥 AI Konsultan Kuliner</Text>
                 </View>
 
                 {/* Content row */}
@@ -435,13 +476,11 @@ export default function DashboardScreen() {
                         ? `Skor tren ${isUp ? "naik" : "turun"} ${deltaAbs} poin dalam 2 hari terakhir`
                         : "Pantau perkembangan tren ini sekarang"}
                     </Text>
-                    {/* Delta badge */}
                     {deltaAbs !== null && (
-                    <View style={[styles.deltaBadge, !isUp && { backgroundColor: Colors.red }]}>
-                      <Text style={styles.deltaBadgeText}>{isUp ? "+" : "-"}{deltaAbs}</Text>
-                    </View>
+                      <View style={[styles.deltaBadge, !isUp && { backgroundColor: Colors.red }]}>
+                        <Text style={styles.deltaBadgeText}>{isUp ? "+" : "-"}{deltaAbs}</Text>
+                      </View>
                     )}
-                    {/* CTA */}
                     <TouchableOpacity
                       style={styles.carouselCTA}
                       onPress={() => item.snapshot && goToInsight(item.snapshot)}
@@ -451,8 +490,15 @@ export default function DashboardScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  {/* Food emoji */}
-                  <Text style={styles.carouselEmoji}>{item.emoji}</Text>
+                  {/* Category icon */}
+                  {(() => {
+                    const cs = getCategoryStyle(classifyCategory(item.name));
+                    return (
+                      <View style={styles.carouselIconWrap}>
+                        <Ionicons name={cs.icon as any} size={52} color={cs.iconColor} style={{ opacity: 0.25 }} />
+                      </View>
+                    );
+                  })()}
                 </View>
               </View>
             );
@@ -529,10 +575,15 @@ export default function DashboardScreen() {
                   <Text style={styles.rankText}>{i + 1}</Text>
                 </View>
 
-                {/* Food emoji circle */}
-                <View style={styles.foodEmojiCircle}>
-                  <Text style={{ fontSize: 20 }}>{getFoodEmoji(t.entity_label)}</Text>
-                </View>
+                {/* Category icon */}
+                {(() => {
+                  const cs = getCategoryStyle(classifyCategory(t.entity_label));
+                  return (
+                    <View style={[styles.foodEmojiCircle, { backgroundColor: cs.iconBg }]}>
+                      <Ionicons name={cs.icon as any} size={20} color={cs.iconColor} />
+                    </View>
+                  );
+                })()}
 
                 {/* Name + Category */}
                 <View style={{ flex: 1, gap: 2 }}>
@@ -807,7 +858,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   carouselCTAText: { fontSize: 12, fontWeight: "700", color: Colors.white },
-  carouselEmoji: { fontSize: 60, marginLeft: 8, lineHeight: 70 },
+  carouselIconWrap: { marginLeft: 8, justifyContent: "center", alignItems: "center" },
 
   // Pagination dots
   dotsRow: {
