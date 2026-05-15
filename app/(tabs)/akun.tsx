@@ -164,9 +164,6 @@ export default function AkunScreen() {
         {/* Top bar */}
         <View style={styles.headerTop}>
           <Text style={styles.headerLabel}>Pengaturan</Text>
-          <TouchableOpacity style={styles.editBtn} onPress={() => router.push("/profile")}>
-            <Ionicons name="create-outline" size={18} color={Colors.white} />
-          </TouchableOpacity>
         </View>
 
         {/* Profile info */}
