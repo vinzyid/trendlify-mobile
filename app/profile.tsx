@@ -14,23 +14,49 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { Colors } from "@/constants/colors";
+import { API_URL } from "@/constants/api";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user } = useAuth();
-  
+  const { user, token, updateUser } = useAuth();
+
   const [name, setName] = useState(user?.name ?? "");
-  const [email, setEmail] = useState(user?.email ?? "");
+  const [email] = useState(user?.email ?? "");
+  const [businessName, setBusinessName] = useState(user?.business_category ?? "");
   const [loading, setLoading] = useState(false);
 
   async function handleSave() {
+    if (!name.trim()) {
+      Alert.alert("Error", "Nama tidak boleh kosong.");
+      return;
+    }
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const res = await fetch(`${API_URL}/api/v1/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          business_category: businessName.trim() || null,
+        }),
+      });
+      let json: any = {};
+      try { json = await res.json(); } catch {}
+      if (!res.ok) {
+        Alert.alert("Gagal", json.message ?? `Server error (${res.status})`);
+        return;
+      }
+      await updateUser(json.user);
       Alert.alert("Berhasil", "Profil kamu telah diperbarui.");
       router.back();
-    }, 1000);
+    } catch {
+      Alert.alert("Error", "Tidak dapat terhubung ke server.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -75,18 +101,11 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Nomor Telepon</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="cth: 08123456789"
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          <View style={styles.field}>
             <Text style={styles.label}>Nama Usaha (Opsional)</Text>
             <TextInput
               style={styles.input}
+              value={businessName}
+              onChangeText={setBusinessName}
               placeholder="cth: Warung Bakso Viral"
             />
           </View>
