@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Modal,
   Alert,
   ActivityIndicator,
 } from "react-native";
@@ -24,6 +25,7 @@ export default function ProfileScreen() {
   const [email] = useState(user?.email ?? "");
   const [businessName, setBusinessName] = useState(user?.business_category ?? "");
   const [loading, setLoading] = useState(false);
+  const [successModal, setSuccessModal] = useState(false);
 
   async function handleSave() {
     if (!name.trim()) {
@@ -50,8 +52,7 @@ export default function ProfileScreen() {
         return;
       }
       await updateUser(json.user);
-      Alert.alert("Berhasil", "Profil kamu telah diperbarui.");
-      router.back();
+      setSuccessModal(true);
     } catch {
       Alert.alert("Error", "Tidak dapat terhubung ke server.");
     } finally {
@@ -123,6 +124,28 @@ export default function ProfileScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+      {/* Success Modal */}
+      <Modal visible={successModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalIconWrap}>
+              <Ionicons name="checkmark-circle" size={40} color={Colors.emerald} />
+            </View>
+            <Text style={styles.modalTitle}>Profil Berhasil Disimpan!</Text>
+            <Text style={styles.modalSub}>
+              Informasi profil kamu telah diperbarui dengan sukses.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalBtn}
+              onPress={() => { setSuccessModal(false); router.back(); }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.modalBtnText}>Oke, Kembali</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -193,4 +216,39 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   saveBtnText: { color: Colors.white, fontWeight: "800", fontSize: 15 },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 40,
+    alignItems: "center",
+    gap: 10,
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 99,
+    backgroundColor: Colors.stone200, marginBottom: 8,
+  },
+  modalIconWrap: {
+    width: 72, height: 72, borderRadius: 24,
+    backgroundColor: "#F0FDF4",
+    alignItems: "center", justifyContent: "center",
+    marginBottom: 4,
+  },
+  modalTitle: { fontSize: 18, fontWeight: "800", color: Colors.stone900, textAlign: "center" },
+  modalSub: { fontSize: 13, color: Colors.stone500, textAlign: "center", lineHeight: 20, marginBottom: 4 },
+  modalBtn: {
+    width: "100%", backgroundColor: Colors.orange,
+    borderRadius: 16, paddingVertical: 15, alignItems: "center",
+    shadowColor: Colors.orange, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+  },
+  modalBtnText: { color: Colors.white, fontWeight: "800", fontSize: 15 },
 });
